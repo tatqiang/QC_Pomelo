@@ -1,0 +1,70 @@
+@import "tailwindcss";
+
+/* Tailwind v4 custom colors */
+@theme {
+  --color-dark-ink: #121212;
+  --color-carbon: #2D2E2B;
+  --color-siberian: #50605A;
+  --color-moss: #81938A;
+  --color-cyclone: #B9CABE;
+  --color-glacial: #EBF1ED;
+}
+
+/* ============================
+   QC System — Custom Styles
+   ============================ */
+
+:root {
+  /* Green Theme Color Variables */
+  --color-bg: #EBF1ED;              /* Light background */
+  --color-navbar: #50605A;          /* Dark navbar */
+  --color-surface: #FFFFFF;         /* White cards */
+  --color-primary: #81938A;         /* Primary brand */
+  --color-accent: #B9CABE;          /* Light accent */
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#app {
+  min-height: 100vh;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.3);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.5);
+}
+
+/* Utility: brand gradient text */
+.text-brand-gradient {
+  background: linear-gradient(135deg, #81938A, #B9CABE);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Light theme with dark navbar */
+body {
+  background-color: var(--color-bg);
+  color: var(--color-dark-ink);
+}

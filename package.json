@@ -1,0 +1,39 @@
+{
+  "name": "qc-ject",
+  "private": true,
+  "version": "2.0.3",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@azure/msal-browser": "^4.29.0",
+    "@sparticuz/chromium-min": "^143.0.4",
+    "@supabase/supabase-js": "^2.97.0",
+    "date-fns": "^4.1.0",
+    "dayjs": "^1.11.19",
+    "html2canvas": "^1.4.1",
+    "hy-vue-gantt": "^5.0.1",
+    "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^5.5.207",
+    "pinia": "^3.0.4",
+    "puppeteer-core": "^24.38.0",
+    "vite-plugin-pwa": "^1.2.0",
+    "vue": "^3.5.25",
+    "vue-router": "^5.0.3",
+    "workbox-window": "^7.4.0",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.2.1",
+    "@types/node": "^24.10.1",
+    "@vitejs/plugin-vue": "^6.0.2",
+    "@vue/tsconfig": "^0.8.1",
+    "tailwindcss": "^4.2.1",
+    "typescript": "~5.9.3",
+    "vite": "^7.3.1",
+    "vue-tsc": "^3.1.5"
+  }
+}

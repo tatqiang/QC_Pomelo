@@ -1,0 +1,317 @@
+{
+  "page": {
+    "type": "txt",
+    "page": 0,
+    "rect": [
+      463.64487271241995,
+      60.05306373336927,
+      548.689850919632,
+      71.11830574490286
+    ],
+    "fontsize": 12.3,
+    "font": "Helv",
+    "align": 1,
+    "lines": null,
+    "lineSpacing": null
+  },
+  "totalPage": {
+    "type": "txt",
+    "page": 0,
+    "rect": [
+      463.65301513671875,
+      60.05306373336927,
+      544.5700073242188,
+      71.11830574490286
+    ],
+    "fontsize": 12.3,
+    "font": "Helv",
+    "align": 1,
+    "lines": null,
+    "lineSpacing": null
+  },
+  "confirmedDate": {
+    "type": "date",
+    "page": 0,
+    "rect": [
+      463.64487271241995,
+      73.11830574490286,
+      544.5700073242188,
+      84.18354775643645
+    ],
+    "fontsize": 7.9,
+    "font": "Helv",
+    "align": 2,
+    "lines": null,
+    "lineSpacing": null
+  },
+  "itrNo": {
+    "type": "txt",
+    "page": 0,
+    "rect": [
+      463.65301513671875,
+      90.71283165376809,
+      544.5700073242188,
+      104.3911220676084
+    ],
+    "fontsize": 12.3,
+    "font": "Helv",
+    "align": 0,
+    "lines": null,
+    "lineSpacing": null
+  },
+  "dwgNo": {
+    "type": "txt",
+    "page": 0,
+    "rect": [
+      463.65301513671875,
+      106.3911220676084,
+      544.5700073242188,
+      120.06941248144871
+    ],
+    "fontsize": 12.3,
+    "font": "Helv",
+    "align": 0,
+    "lines": null,
+    "lineSpacing": null
+  },
+  "dwgRev": {
+    "type": "txt",
+    "page": 0,
+    "rect": [
+      463.65301513671875,
+      122.06941248144871,
+      544.5700073242188,
+      135.74770289528902
+    ],
+    "fontsize": 12.3,
+    "font": "Helv",
+    "align": 0,
+    "lines": null,
+    "lineSpacing": null
+  },
+  "area": {
+    "type": "txt",
+    "page": 0,
+    "rect": [
+      100.85399627685547,
+      137.74770289528902,
+      344.31201171875,
+      151.42599330912932
+    ],
+    "fontsize": 12.3,
+    "font": "Helv",
+    "align": 0,
+    "lines": null,
+    "lineSpacing": null
+  },
+  "itpNo": {
+    "type": "txt",
+    "page": 0,
+    "rect": [
+      463.65301513671875,
+      137.74770289528902,
+      544.5700073242188,
+      151.42599330912932
+    ],
+    "fontsize": 12.3,
+    "font": "Helv",
+    "align": 0,
+    "lines": null,
+    "lineSpacing": null
+  },
+  "location": {
+    "type": "txt",
+    "page": 0,
+    "rect": [
+      100.85399627685547,
+      153.42599330912932,
+      344.31201171875,
+      167.10428372296963
+    ],
+    "fontsize": 12.3,
+    "font": "Helv",
+    "align": 0,
+    "lines": null,
+    "lineSpacing": null
+  },
+  "des_01": {
+    "type": "txt",
+    "page": 0,
+    "rect": [
+      100.85399627685547,
+      178.1628515176329,
+      544.5700073242188,
+      194.45419033377993
+    ],
+    "fontsize": 12.3,
+    "font": "Helv",
+    "align": 0,
+    "lines": null,
+    "lineSpacing": null
+  },
+  "photo_1": {
+    "type": "photo",
+    "page": 0,
+    "rect": [
+      58.42487482536809,
+      200.98347423111156,
+      292.1622244701233,
+      329.63589434644746
+    ],
+    "fontsize": 9.7,
+    "font": "Helv",
+    "align": 1,
+    "lines": null,
+    "lineSpacing": null
+  },
+  "photo_2": {
+    "type": "photo",
+    "page": 0,
+    "rect": [
+      294.1622244701233,
+      200.98347423111156,
+      544.5700073242188,
+      329.63589434644746
+    ],
+    "fontsize": 9.7,
+    "font": "Helv",
+    "align": 1,
+    "lines": null,
+    "lineSpacing": null
+  },
+  "des_02": {
+    "type": "txt",
+    "page": 0,
+    "rect": [
+      100.85399627685547,
+      336.1651782437791,
+      544.5700073242188,
+      352.4565170599261
+    ],
+    "fontsize": 12.3,
+    "font": "Helv",
+    "align": 0,
+    "lines": null,
+    "lineSpacing": null
+  },
+  "photo_3": {
+    "type": "photo",
+    "page": 0,
+    "rect": [
+      58.42487482536809,
+      358.98580095725777,
+      292.1622244701233,
+      487.63822107259364
+    ],
+    "fontsize": 9.7,
+    "font": "Helv",
+    "align": 1,
+    "lines": null,
+    "lineSpacing": null
+  },
+  "photo_4": {
+    "type": "photo",
+    "page": 0,
+    "rect": [
+      294.1622244701233,
+      358.98580095725777,
+      544.5700073242188,
+      487.63822107259364
+    ],
+    "fontsize": 9.7,
+    "font": "Helv",
+    "align": 1,
+    "lines": null,
+    "lineSpacing": null
+  },
+  "des_03": {
+    "type": "txt",
+    "page": 0,
+    "rect": [
+      100.85399627685547,
+      494.16750496992535,
+      544.5700073242188,
+      510.45884378607235
+    ],
+    "fontsize": 12.3,
+    "font": "Helv",
+    "align": 0,
+    "lines": null,
+    "lineSpacing": null
+  },
+  "photo_5": {
+    "type": "photo",
+    "page": 0,
+    "rect": [
+      58.42487482536809,
+      516.9881276834041,
+      292.1622244701233,
+      645.64054779874
+    ],
+    "fontsize": 9.7,
+    "font": "Helv",
+    "align": 1,
+    "lines": null,
+    "lineSpacing": null
+  },
+  "photo_6": {
+    "type": "photo",
+    "page": 0,
+    "rect": [
+      294.1622244701233,
+      516.9881276834041,
+      544.5700073242188,
+      645.64054779874
+    ],
+    "fontsize": 9.7,
+    "font": "Helv",
+    "align": 1,
+    "lines": null,
+    "lineSpacing": null
+  },
+  "des_04": {
+    "type": "txt",
+    "page": 0,
+    "rect": [
+      100.85399627685547,
+      652.1698316960717,
+      544.5700073242188,
+      668.4611705122187
+    ],
+    "fontsize": 12.3,
+    "font": "Helv",
+    "align": 0,
+    "lines": null,
+    "lineSpacing": null
+  },
+  "photo_7": {
+    "type": "photo",
+    "page": 0,
+    "rect": [
+      58.42487482536809,
+      674.9904544095504,
+      292.1622244701233,
+      803.6428745248863
+    ],
+    "fontsize": 9.7,
+    "font": "Helv",
+    "align": 1,
+    "lines": null,
+    "lineSpacing": null
+  },
+  "photo_8": {
+    "type": "photo",
+    "page": 0,
+    "rect": [
+      294.1622244701233,
+      674.9904544095504,
+      544.5700073242188,
+      803.6428745248863
+    ],
+    "fontsize": 9.7,
+    "font": "Helv",
+    "align": 1,
+    "lines": null,
+    "lineSpacing": null
+  }
+}

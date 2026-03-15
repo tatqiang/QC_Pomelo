@@ -1,0 +1,310 @@
+import { defineStore } from 'pinia'
+import { ref, computed } from 'vue'
+import { supabase } from '@/lib/supabase'
+import { r2StorageService } from '@/services/r2StorageService'
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+export type ItrStatus = 'draft' | 'submitted' | 'approved' | 'rejected'
+export type ItrType = 'inspection' | 'test' | 'survey' | 'commissioning'
+export type Discipline = 'civil' | 'mechanical' | 'electrical' | 'plumbing' | 'hvac' | 'fire' | 'instrumentation' | 'general'
+
+export interface ItrAttachment {
+    id: string
+    itr_id: string
+    file_name: string
+    file_url: string
+    file_type: string | null
+    file_size: number | null
+    uploaded_by: string | null
+    uploaded_at: string
+}
+
+export interface ITR {
+    id: string
+    project_id: string
+    task_id: string | null
+    area_id: string | null
+    itr_number: string | null
+    title: string
+    itr_type_id: string | null         // FK → itr_types (per-project lookup)
+    itr_type?: ItrType                 // legacy enum — kept for backward compat
+    discipline: Discipline
+    status: ItrStatus
+    location: string | null
+    notes: string | null
+    inspection_date: string | null
+    submitted_at: string | null
+    submitted_by: string | null
+    reviewed_at: string | null
+    reviewed_by: string | null
+    review_notes: string | null
+    created_by: string | null
+    created_at: string
+    updated_at: string
+    itr_attachments: ItrAttachment[]
+}
+
+export type ItrInsert = Pick<ITR, 'project_id' | 'title'> &
+    Partial<Omit<ITR, 'id' | 'created_at' | 'updated_at' | 'itr_attachments' | 'project_id' | 'title'>>
+
+export type ItrUpdate = Partial<Omit<ITR, 'id' | 'project_id' | 'created_at' | 'updated_at' | 'itr_attachments'>>
+
+// ─── Meta ─────────────────────────────────────────────────────────────────────
+
+export const STATUS_META: Record<ItrStatus, { label: string; color: string; icon: string }> = {
+    draft: { label: 'Draft', color: 'surface-variant', icon: 'mdi-file-edit-outline' },
+    submitted: { label: 'Submitted', color: 'info', icon: 'mdi-send-outline' },
+    approved: { label: 'Approved', color: 'success', icon: 'mdi-check-circle-outline' },
+    rejected: { label: 'Rejected', color: 'error', icon: 'mdi-close-circle-outline' },
+}
+
+export const TYPE_META: Record<ItrType, { label: string; icon: string }> = {
+    inspection: { label: 'Inspection', icon: 'mdi-eye-check-outline' },
+    test: { label: 'Test', icon: 'mdi-test-tube' },
+    survey: { label: 'Survey', icon: 'mdi-ruler-square' },
+    commissioning: { label: 'Commissioning', icon: 'mdi-rocket-launch-outline' },
+}
+
+export const DISCIPLINE_LABELS: Record<Discipline, string> = {
+    civil: 'Civil', mechanical: 'Mechanical', electrical: 'Electrical',
+    plumbing: 'Plumbing', hvac: 'HVAC', fire: 'Fire', instrumentation: 'Instrumentation', general: 'General',
+}
+
+// ─── Store ────────────────────────────────────────────────────────────────────
+
+export const useItrStore = defineStore('itr', () => {
+    const itrs = ref<ITR[]>([])
+    const loading = ref(false)
+    const error = ref<string | null>(null)
+
+    // ── Filters ───────────────────────────────────────────────────────────────
+
+    const filterStatus = ref<ItrStatus | 'all'>('all')
+    const filterDiscipline = ref<Discipline | 'all'>('all')
+    const filterSearch = ref('')
+
+    const filteredITRs = computed(() => {
+        let list = itrs.value
+        if (filterStatus.value !== 'all') list = list.filter(i => i.status === filterStatus.value)
+        if (filterDiscipline.value !== 'all') list = list.filter(i => i.discipline === filterDiscipline.value)
+        if (filterSearch.value.trim()) {
+            const q = filterSearch.value.toLowerCase()
+            list = list.filter(i =>
+                i.title.toLowerCase().includes(q) ||
+                (i.itr_number ?? '').toLowerCase().includes(q)
+            )
+        }
+        return list
+    })
+
+    // ── Stats (for dashboard) ─────────────────────────────────────────────────
+
+    const stats = computed(() => ({
+        total: itrs.value.length,
+        draft: itrs.value.filter(i => i.status === 'draft').length,
+        submitted: itrs.value.filter(i => i.status === 'submitted').length,
+        approved: itrs.value.filter(i => i.status === 'approved').length,
+        rejected: itrs.value.filter(i => i.status === 'rejected').length,
+    }))
+
+    // ── CRUD ──────────────────────────────────────────────────────────────────
+
+    const fetchITRs = async (projectId: string): Promise<void> => {
+        loading.value = true
+        error.value = null
+        try {
+            const { data, error: dbErr } = await supabase
+                .from('itrs')
+                .select('*, itr_attachments(*)')
+                .eq('project_id', projectId)
+                .order('created_at', { ascending: false })
+
+            if (dbErr) throw dbErr
+            itrs.value = (data as ITR[]) ?? []
+        } catch (err) {
+            error.value = err instanceof Error ? err.message : 'Failed to load ITRs'
+            console.error('❌ fetchITRs:', err)
+        } finally {
+            loading.value = false
+        }
+    }
+
+    const createITR = async (payload: ItrInsert): Promise<ITR | null> => {
+        loading.value = true
+        error.value = null
+        try {
+            // Auto-generate ITR number: ITR-XXX (count of project ITRs + 1)
+            const count = itrs.value.filter(i => i.project_id === payload.project_id).length
+            const itr_number = `ITR-${String(count + 1).padStart(3, '0')}`
+
+            const { data, error: dbErr } = await supabase
+                .from('itrs')
+                .insert({ ...payload, itr_number })
+                .select('*, itr_attachments(*)')
+                .single()
+
+            if (dbErr) throw dbErr
+            const itr = data as ITR
+            itrs.value.unshift(itr)
+            return itr
+        } catch (err) {
+            error.value = err instanceof Error ? err.message : 'Failed to create ITR'
+            console.error('❌ createITR:', err)
+            return null
+        } finally {
+            loading.value = false
+        }
+    }
+
+    const updateITR = async (id: string, payload: ItrUpdate): Promise<ITR | null> => {
+        loading.value = true
+        error.value = null
+        try {
+            const { data, error: dbErr } = await supabase
+                .from('itrs')
+                .update(payload)
+                .eq('id', id)
+                .select('*, itr_attachments(*)')
+                .single()
+
+            if (dbErr) throw dbErr
+            const updated = data as ITR
+            const idx = itrs.value.findIndex(i => i.id === id)
+            if (idx !== -1) itrs.value[idx] = updated
+            return updated
+        } catch (err) {
+            error.value = err instanceof Error ? err.message : 'Failed to update ITR'
+            console.error('❌ updateITR:', err)
+            return null
+        } finally {
+            loading.value = false
+        }
+    }
+
+    const deleteITR = async (id: string): Promise<boolean> => {
+        loading.value = true
+        error.value = null
+        try {
+            const { error: dbErr } = await supabase.from('itrs').delete().eq('id', id)
+            if (dbErr) throw dbErr
+            itrs.value = itrs.value.filter(i => i.id !== id)
+            return true
+        } catch (err) {
+            error.value = err instanceof Error ? err.message : 'Failed to delete ITR'
+            console.error('❌ deleteITR:', err)
+            return false
+        } finally {
+            loading.value = false
+        }
+    }
+
+    // ── Status transitions ────────────────────────────────────────────────────
+
+    const submitITR = async (id: string, userId: string): Promise<ITR | null> => {
+        return updateITR(id, {
+            status: 'submitted',
+            submitted_at: new Date().toISOString(),
+            submitted_by: userId,
+        })
+    }
+
+    const approveITR = async (id: string, userId: string, notes?: string): Promise<ITR | null> => {
+        return updateITR(id, {
+            status: 'approved',
+            reviewed_at: new Date().toISOString(),
+            reviewed_by: userId,
+            review_notes: notes ?? null,
+        })
+    }
+
+    const rejectITR = async (id: string, userId: string, notes: string): Promise<ITR | null> => {
+        return updateITR(id, {
+            status: 'rejected',
+            reviewed_at: new Date().toISOString(),
+            reviewed_by: userId,
+            review_notes: notes,
+        })
+    }
+
+    // ── Attachments ───────────────────────────────────────────────────────────
+
+    const addAttachment = async (
+        itr: ITR,
+        file: File,
+        userId: string | null
+    ): Promise<ItrAttachment | null> => {
+        loading.value = true
+        error.value = null
+        try {
+            const subPath = `itrs/${itr.project_id}/${itr.id}`
+            const fileUrl = await r2StorageService.uploadFile(file, subPath)
+
+            const { data, error: dbErr } = await supabase
+                .from('itr_attachments')
+                .insert({
+                    itr_id: itr.id,
+                    file_name: file.name,
+                    file_url: fileUrl,
+                    file_type: file.type || null,
+                    file_size: file.size,
+                    uploaded_by: userId,
+                })
+                .select()
+                .single()
+
+            if (dbErr) throw dbErr
+            const attachment = data as ItrAttachment
+
+            // Update local state
+            const idx = itrs.value.findIndex(i => i.id === itr.id)
+            const local = idx !== -1 ? itrs.value[idx] : null
+            if (local) local.itr_attachments.push(attachment)
+            return attachment
+        } catch (err) {
+            error.value = err instanceof Error ? err.message : 'Failed to upload attachment'
+            console.error('❌ addAttachment:', err)
+            return null
+        } finally {
+            loading.value = false
+        }
+    }
+
+    const deleteAttachment = async (itrId: string, attachmentId: string): Promise<boolean> => {
+        loading.value = true
+        error.value = null
+        try {
+            const { error: dbErr } = await supabase
+                .from('itr_attachments')
+                .delete()
+                .eq('id', attachmentId)
+
+            if (dbErr) throw dbErr
+
+            // Update local state
+            const idx = itrs.value.findIndex(i => i.id === itrId)
+            const local = idx !== -1 ? itrs.value[idx] : null
+            if (local) {
+                local.itr_attachments = local.itr_attachments.filter(a => a.id !== attachmentId)
+            }
+            return true
+        } catch (err) {
+            error.value = err instanceof Error ? err.message : 'Failed to delete attachment'
+            console.error('❌ deleteAttachment:', err)
+            return false
+        } finally {
+            loading.value = false
+        }
+    }
+
+    const clearITRs = () => { itrs.value = []; filterStatus.value = 'all'; filterSearch.value = '' }
+
+    return {
+        itrs, loading, error,
+        filterStatus, filterDiscipline, filterSearch, filteredITRs, stats,
+        fetchITRs, createITR, updateITR, deleteITR, clearITRs,
+        submitITR, approveITR, rejectITR,
+        addAttachment, deleteAttachment,
+        STATUS_META, TYPE_META, DISCIPLINE_LABELS,
+    }
+})

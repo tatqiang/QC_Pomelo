@@ -1,0 +1,1777 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GR-01 Grounding Inspection Report</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        @page {
+            size: A4 portrait;
+            margin: 12mm 10mm;
+        }
+
+        body {
+            font-family: 'Sarabun', Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            background-color: #525659;
+            min-width: fit-content;
+            print-color-adjust: exact;
+            -webkit-print-color-adjust: exact;
+        }
+
+        .a4-container {
+            width: 210mm;
+            background-color: #fff;
+            padding: 3mm 5mm;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+            position: relative;
+        }
+
+        .content-wrapper {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+        }
+
+        /* Outer Box with border */
+        .section-box {
+            border: 1px solid #000;
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+            margin-bottom: -1px;
+        }
+
+        /* Headers */
+        .header-row-1 {
+            display: flex;
+            border-bottom: 1px solid #000;
+            height: 32px;
+            align-items: stretch;
+        }
+
+        .header-row-2 {
+            display: flex;
+            border-bottom: 1px solid #000;
+            height: 27px;
+            align-items: stretch;
+        }
+
+        .company-title {
+            flex-grow: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 13px;
+        }
+
+        .logo-box {
+            width: 80px;
+            padding: 2px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .logo-box img {
+            max-height: 100%;
+            max-width: 100%;
+            object-fit: contain;
+        }
+
+        .report-title {
+            flex-grow: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 13px;
+        }
+
+        .page-date-box {
+            width: 120px;
+            border-left: 1px solid #000;
+            display: flex;
+            flex-direction: column;
+            font-size: 10px;
+            font-weight: bold;
+        }
+
+        .page-box {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid #000;
+            padding: 0 5px;
+            line-height: 1;
+        }
+
+        .page-input {
+            border: none;
+            outline: none;
+            font-family: inherit;
+            font-size: 10px;
+            font-weight: normal;
+            background-color: #e8f4fd;
+            width: 30px;
+            text-align: center;
+            padding: 0;
+        }
+        body.locked .page-input { background-color: transparent; pointer-events: none; }
+
+        .date-box {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            padding: 0 5px;
+            overflow: hidden;
+            line-height: 1;
+        }
+
+        /* Info Grid */
+        .info-grid {
+            display: grid;
+            grid-template-columns: 80px 10px 1fr 100px 10px 150px;
+            gap: 2px 0;
+            padding: 4px 10px;
+            font-size: 10px;
+            font-weight: bold;
+            align-items: end;
+        }
+
+        .info-grid > div:nth-child(6n + 4) {
+            padding-left: 20px;
+        }
+
+        .info-grid .label {
+            white-space: nowrap;
+        }
+
+        .info-grid .colon {
+            text-align: center;
+        }
+
+        .info-grid .val {
+            border-bottom: 1px solid #000;
+            font-weight: normal;
+            padding-left: 4px;
+            padding-bottom: 1px;
+            min-height: 12px;
+        }
+
+        input.val {
+            border: none;
+            border-bottom: 1px solid #000;
+            outline: none;
+            font-family: inherit;
+            font-size: 10px;
+            font-weight: normal;
+            padding-left: 4px;
+            padding-bottom: 1px;
+            background: transparent;
+            width: 100%;
+            box-sizing: border-box;
+            min-height: 12px;
+        }
+
+        .date-input {
+            border: none;
+            outline: none;
+            font-family: inherit;
+            font-size: 10px;
+            font-weight: bold;
+            background: transparent;
+            flex: 1;
+            min-width: 0;
+        }
+
+        /* Spec reference bar */
+        .spec-ref {
+            display: flex;
+            border-bottom: 1px solid #000;
+            font-size: 9px;
+            padding: 3px 10px;
+            gap: 5px;
+        }
+        .spec-ref .spec-label {
+            font-weight: bold;
+            white-space: nowrap;
+        }
+        .spec-ref .spec-val {
+            font-weight: normal;
+        }
+
+        /* Main Grid Container */
+        .main-grid-container {
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+        }
+
+        /* Main Grid Table */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 6% 44% 16% 8% 8% 18%;
+            font-size: 9px;
+            border-top: 1px solid #000;
+            border-left: 1px solid #000;
+            margin-bottom: -2px;
+        }
+
+        .gc {
+            border-right: 1px solid #000;
+            border-bottom: 1px solid #000;
+            padding: 1px 5px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            min-height: 20px;
+            font-size: 10px;
+        }
+
+        .gc.th {
+            align-items: center;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .gc.bold {
+            font-weight: bold;
+        }
+
+        .gc.center {
+            align-items: center;
+            text-align: center;
+        }
+
+        .gc.indent-1 {
+            padding-left: 15px;
+        }
+
+        .gc.indent-2 {
+            padding-left: 30px;
+        }
+
+        .gc.sec-hdr {
+            font-weight: bold;
+        }
+
+        /* Checkbox cells */
+        .gc-check {
+            align-items: center;
+            justify-content: center;
+        }
+
+        .gc-check input[type="checkbox"] {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 15px;
+            height: 15px;
+            border: none;
+            cursor: pointer;
+            position: relative;
+            background-color: #e8f4fd;
+            flex-shrink: 0;
+        }
+
+        .gc-check input[type="checkbox"]:checked {
+            border-color: #000;
+        }
+
+        .gc-check input[type="checkbox"]:checked::after {
+            content: '\2713';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 13px;
+            font-weight: bold;
+            color: #000;
+            line-height: 1;
+        }
+
+        body.locked .gc-check input[type="checkbox"] {
+            pointer-events: none;
+            cursor: default;
+            background-color: transparent;
+        }
+
+        input.remark-input {
+            border: none;
+            outline: none;
+            font-family: inherit;
+            font-size: 10px;
+            background: transparent;
+            width: 100%;
+            box-sizing: border-box;
+            padding: 1px 2px;
+        }
+
+        body.locked input.remark-input {
+            pointer-events: none;
+        }
+
+        /* Footer Area */
+        .footer-area {
+            display: flex;
+            flex-direction: column;
+            min-height: 80px;
+        }
+
+        .note-row {
+            padding: 4px 10px;
+            font-size: 10px;
+            font-weight: bold;
+            border-bottom: 1px solid #000;
+            flex-grow: 1;
+            min-height: 45px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .note-line-1 {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .note-line-2 {
+            display: flex;
+            align-items: center;
+        }
+
+        .note-line-1 input,
+        .note-line-2 input {
+            flex: 1;
+            border: none;
+            border-bottom: 1px solid #000;
+            outline: none;
+            font-family: inherit;
+            font-size: 10px;
+            font-weight: normal;
+            background: transparent;
+            padding-bottom: 1px;
+        }
+
+        body.locked .note-line-1 input,
+        body.locked .note-line-2 input {
+            pointer-events: none;
+        }
+
+        .signature-section {
+            display: flex;
+            justify-content: space-between;
+            padding: 3px 5px 2px 5px;
+            gap: 5px;
+        }
+
+        .sig-block {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            grid-template-rows: 1fr 1fr;
+            flex: 1;
+        }
+
+        .sig-title-cell {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-size: 10px;
+            font-weight: bold;
+            padding: 2px 2px;
+            line-height: 1.2;
+            min-width: 75px;
+        }
+
+        .sig-title-cell .normal {
+            font-weight: normal;
+        }
+
+        .sig-line-cell {
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            padding: 2px 2px 2px 4px;
+        }
+
+        .sig-line-wrap {
+            flex-grow: 1;
+            min-height: 22px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+        }
+
+        .sig-line {
+            border-bottom: 1px solid #000;
+            min-height: 22px;
+        }
+
+        /* Sig cell clickable in edit mode */
+        .sig-line-cell[data-sigkey] { position: relative; overflow: visible; cursor: default; }
+        body:not(.locked) .sig-line-cell[data-sigkey] { cursor: pointer; }
+        body:not(.locked) .sig-line-cell[data-sigkey]:hover .sig-line {
+            border-bottom-color: #0033cc;
+        }
+
+        /* Preview fills the sig-line-wrap area exactly */
+        .sig-preview {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            object-position: center bottom;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .sig-preview.has-sig { display: block; }
+
+        /* Signature popup */
+        #sig-popup {
+            display: none;
+            position: absolute;
+            z-index: 10000;
+            background: #fff;
+            border: 2px solid #444;
+            border-radius: 6px;
+            box-shadow: 0 6px 24px rgba(0,0,0,0.4);
+            padding: 8px;
+            flex-direction: column;
+            gap: 6px;
+        }
+        #sig-popup.active { display: flex; }
+
+        #sig-popup-label {
+            font-size: 10px;
+            font-weight: bold;
+            text-align: center;
+            color: #333;
+        }
+
+        #sig-popup-canvas {
+            cursor: crosshair;
+            touch-action: none;
+            display: block;
+            border: 1px dashed #bbb;
+            border-bottom: 2px solid #000;
+        }
+
+        .sig-popup-btns {
+            display: flex;
+            gap: 6px;
+            justify-content: flex-end;
+        }
+        .sig-popup-btns button {
+            font-family: inherit;
+            font-size: 10px;
+            padding: 4px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        #sig-popup-done   { background: #2176ae; color: #fff; border: 1px solid #2176ae; }
+        #sig-popup-clear  { background: #eee; border: 1px solid #aaa; color: #333; }
+        #sig-popup-cancel { background: #fff; border: 1px solid #aaa; color: #666; }
+
+        .sig-date {
+            font-size: 9px;
+            font-weight: bold;
+            text-align: center;
+            margin-top: 2px;
+            justify-content: center;
+        }
+
+        .sig-box-date {
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            font-size: 11px;
+            padding-top: 3px;
+            white-space: nowrap;
+            pointer-events: auto;
+        }
+        .sig-box-date input {
+            border: none;
+            outline: none;
+            font-family: inherit;
+            font-size: 11px;
+            font-weight: bold;
+            color: #0033cc;
+            background: transparent;
+            text-align: center;
+            min-width: 90px;
+            cursor: text;
+            padding: 0;
+        }
+        body.locked .sig-box-date input { pointer-events: none; }
+
+        /* ─── PDF Export Test Button ─── */
+        #exportPdfBtn {
+            padding: 10px 22px;
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: bold;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            background: #1a73e8;
+            color: #fff;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+            transition: background 0.2s;
+        }
+        #exportPdfBtn:disabled {
+            background: #5a9fd4;
+            cursor: not-allowed;
+        }
+        @media print { #exportPdfBtn { display: none; } }
+
+        /* ── Add Signature mode ─────────────────────────────────────────── */
+        body.placing-sig { cursor: crosshair !important; }
+        body.placing-sig * { cursor: crosshair !important; }
+
+        .add-sig-btn {
+            padding: 8px 16px;
+            font-family: inherit;
+            font-size: 12px;
+            font-weight: bold;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            background: #28a745;
+            color: #fff;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+        }
+        .add-sig-btn.placing {
+            background: #dc3545;
+        }
+        body.locked .add-sig-btn { display: none; }
+        @media print { .add-sig-btn { display: none; } }
+
+        /* Draggable signature box placed on the document */
+        .placed-sig-box {
+            position: absolute;
+            z-index: 20;
+            border: 1.5px dashed #0033cc;
+            background: rgba(255,255,255,0.7);
+            cursor: move;
+            box-sizing: border-box;
+            min-width: 60px;
+            min-height: 30px;
+        }
+        .placed-sig-box img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            object-position: bottom center;
+            display: block;
+            pointer-events: none;
+        }
+        .placed-sig-box .sig-box-controls {
+            position: absolute;
+            top: -22px;
+            right: 0;
+            display: flex;
+            gap: 3px;
+        }
+        body.locked .placed-sig-box { cursor: default; border-style: solid; border-color: transparent; background: none; }
+        body.locked .placed-sig-box .sig-box-controls { display: none; }
+        @media print { .placed-sig-box { border: none; background: none; } .sig-box-controls { display: none; } }
+
+        .placed-sig-box .sig-box-controls button {
+            font-size: 9px;
+            padding: 1px 6px;
+            border-radius: 3px;
+            cursor: pointer;
+            border: 1px solid #aaa;
+            font-family: inherit;
+            line-height: 1.4;
+        }
+        .sig-box-sign-btn   { background: #2176ae; color: #fff; border-color: #2176ae !important; }
+        .sig-box-remove-btn { background: #fff; color: #c00; }
+
+        /* Resize handle */
+        .sig-box-resize {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 12px;
+            height: 12px;
+            cursor: se-resize;
+            background: #0033cc;
+            opacity: 0.5;
+            border-radius: 2px 0 2px 0;
+        }
+        body.locked .sig-box-resize { display: none; }
+        /* ────────────────────────────────────────────────────────────────── */
+
+        @media print {
+            html, body {
+                margin: 0;
+                padding: 0;
+                height: 100%;
+                overflow: hidden;
+            }
+
+            .a4-container {
+                box-shadow: none;
+                width: 100%;
+                height: auto;
+                max-height: 100%;
+                overflow: hidden;
+                padding: 0;
+            }
+
+            .edit-btn { display: none; }
+        }
+
+        /* Edit/Lock toggle button */
+        .edit-btn {
+            padding: 10px 22px;
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: bold;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+            transition: background 0.2s;
+        }
+        .edit-btn.locked   { background: #2176ae; color: #fff; }
+        .edit-btn.unlocked { background: #e05c3a; color: #fff; }
+
+        /* Floating button group - always pinned to visible viewport corner */
+        #btn-group {
+            position: absolute;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 8px;
+        }
+
+        @media print {
+            #btn-group { display: none; }
+            input[data-key] {
+                background-color: transparent !important;
+                color: #000 !important;
+            }
+            .gc-check input[type="checkbox"] {
+                background-color: transparent !important;
+            }
+        }
+
+        /* System fields (auto-injected from DB) — always readonly-looking */
+        input[data-key^="sys:"] {
+            background-color: #f0f0f0;
+            color: #444;
+            cursor: default;
+        }
+        /* sys:location is pre-filled but editable — light blue like other editable fields */
+        input[data-key="sys:location"] {
+            background-color: #e8f4fd;
+            color: #000;
+            cursor: text;
+        }
+
+        /* Editable user-fillable inputs — light blue background */
+        input:not([type="checkbox"])[data-key]:not([data-key^="sys:"]) {
+            background-color: #e8f4fd;
+        }
+
+        /* Locked state: inputs look like plain text */
+        body.locked input[data-key] {
+            pointer-events: none;
+            color: #000;
+        }
+        body.locked .date-input {
+            pointer-events: none;
+            color: #000;
+        }
+        body.locked input:not([type="checkbox"])[data-key]:not([data-key^="sys:"]) {
+            background-color: transparent;
+        }
+        body.locked input[data-key^="sys:"] {
+            background-color: #f0f0f0;
+        }
+
+        /* Unlocked state: explicitly re-enable all editable inputs */
+        body:not(.locked) input:not([readonly]) {
+            pointer-events: auto !important;
+            cursor: text;
+        }
+        body:not(.locked) input[type="checkbox"]:not([readonly]) {
+            pointer-events: auto !important;
+            cursor: pointer;
+        }
+        .form-no {
+            text-align: right;
+            font-size: 9px;
+            margin-top: 4px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="btn-group">
+        <button id="exportPdfBtn">&#128229; Export PDF</button>
+        <button id="addSigBtn" class="add-sig-btn" style="display:none;">&#9998; Add Signature</button>
+        <button id="editToggleBtn" class="edit-btn locked">&#9999;&#65039; Edit</button>
+    </div>
+
+    <!-- Signature popup -->
+    <div id="sig-popup">
+        <div id="sig-popup-label">Sign here</div>
+        <canvas id="sig-popup-canvas" width="300" height="110"></canvas>
+        <div class="sig-popup-btns">
+            <button id="sig-popup-clear">&#10005; Clear</button>
+            <button id="sig-popup-cancel">Cancel</button>
+            <button id="sig-popup-done">&#10003; Done</button>
+        </div>
+    </div>
+
+    <div class="a4-container">
+
+        <div class="content-wrapper">
+
+            <div class="section-box">
+                <!-- Header Row 1 -->
+                <div class="header-row-1">
+                    <div class="logo-box">
+                        <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTI0NyIgaGVpZ2h0PSI2NDQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHhtbDpzcGFjZT0icHJlc2VydmUiIG92ZXJmbG93PSJoaWRkZW4iPjxnPjxwYXRoIGQ9Ik0yMi40OTk4IDIxLjUwMDIgMTIyNS41IDIxLjUwMDIgMTIyNS41IDYyMi41IDIyLjQ5OTggNjIyLjVaIiBzdHJva2U9IiNFQzFDMjQiIHN0cm9rZS13aWR0aD0iMTIuOTM5MSIgc3Ryb2tlLW1pdGVybGltaXQ9IjgiIGZpbGw9IiNFQzFDMjQiIGZpbGwtcnVsZT0iZXZlbm9kZCIvPjxwYXRoIGQ9Ik03My45OTk5IDMxMy44MSA2MjEuODM0IDQ5Ljk5OTggMTE3NSAzMTkuMDU4IDYyMS44MzQgNTkwIDczLjk5OTkgMzEzLjgxWiIgZmlsbD0iIzJENDE5OSIgZmlsbC1ydWxlPSJldmVub2RkIi8+PHBhdGggZD0iTTYyMS43NzMgNTk5IDYxOC4zNjMgNTk3LjMxNSA1NiAzMTMuNjQyIDYyMS43NzMgNDAuOTk5OSA2MjUuMTgyIDQyLjY4NDYgMTE5MyAzMTkuMDU3IDYyMS43NzMgNTk5Wk05MS4wNiAzMTMuOTYzIDYyMS44MTMgNTgxLjY3MiAxMTU3LjY2IDMxOS4wOTggNjIxLjc3MyA1OC4zMjg0IDkxLjA2IDMxMy45NjNaIiBmaWxsPSIjRkZGRkZGIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiLz48cGF0aCBkPSJNMzc2LjAxMiAyODguMzkyIDMzMi41MDIgMjg4LjM5MiAzMzIuNTAyIDI3Ny41NjZDMzMyLjUwMiAyNzIuNDc0IDMzMS45MDQgMjY5LjE4NiAzMzAuNzg3IDI2Ny44MjMgMzI5LjcxIDI2Ni40MiAzMjcuODc2IDI2NS44MTggMzI1LjI0NCAyNjUuODE4IDMyMi40NTIgMjY1LjgxOCAzMjAuMjk4IDI2Ni43NDEgMzE4LjkwMyAyNjguNjI1IDMxNy41MDcgMjcwLjQ2OSAzMTYuNzQ5IDI3My4yNzYgMzE2Ljc0OSAyNzcuMTI1IDMxNi43NDkgMjgyLjA5NyAzMTcuNTA3IDI4NS43ODUgMzE5LjIyMiAyODguMjcxIDMyMC43NzcgMjkwLjc1NyAzMjUuMjQ0IDI5My42ODQgMzMyLjUwMiAyOTcuMjUyIDM1My4zMiAzMDcuMzE2IDM2Ni40NCAzMTUuNjk2IDM3MS44MjQgMzIyLjAzMSAzNzcuMjA4IDMyOC41MjYgMzgwIDMzOC45MSAzODAgMzUzLjMwNCAzODAgMzYzLjg0OSAzNzguNDQ1IDM3MS40MjcgMzc1LjUzMyAzNzYuMzU5IDM3Mi42MjIgMzgxLjI5IDM2Ni43NTkgMzg1LjUgMzU4LjEwNSAzODguOTA4IDM0OS40NTEgMzkyLjMxNiAzMzkuNDQxIDM5NCAzMjguMDM1IDM5NCAzMTUuNTUzIDM5NCAzMDQuNzQ1IDM5MS45OTUgMjk1Ljk3MSAzODguMTA2IDI4Ny4xOTcgMzg0LjIxNyAyODEuMzM1IDM3OS4yODUgMjc4LjU0MyAzNzMuMjMxIDI3NS43NTIgMzY3LjE3NyAyNzQuMzk2IDM1OC42NzcgMjc0LjM5NiAzNDcuNjkxTDI3NC4zOTYgMzM4LjEwOCAzMTcuOTA2IDMzOC4xMDggMzE3LjkwNiAzNTUuOTFDMzE3LjkwNiAzNjEuNDgzIDMxOC41MDQgMzY0Ljg5MiAzMTkuNzQgMzY2LjU3NSAzMjAuOTc2IDM2OC4xMzkgMzIzLjEzIDM2OC45MDEgMzI2LjIwMSAzNjguOTAxIDMyOS4yNzIgMzY4LjkwMSAzMzEuNTg1IDM2Ny45NzkgMzMzLjE0IDM2NS45NzQgMzM0LjY5NSAzNjMuOTY5IDMzNS40NTMgMzYxLjAwMiAzMzUuNDUzIDM1Ny4xNTMgMzM1LjQ1MyAzNDguNDkzIDMzNC4wNTcgMzQyLjkyIDMzMS4xNDYgMzQwLjExMyAzMjguMjM1IDMzNy40NjcgMzIwLjgxNyAzMzIuOTc2IDMwOS4yNTIgMzI2LjgwMiAyOTcuNjg2IDMyMC40NjcgMjg5Ljk4OSAzMTUuOTc2IDI4Ni4xMjEgMzEzLjE3IDI4Mi4yNTIgMzEwLjM2MyAyNzkuMTgxIDMwNi4zNTQgMjc2LjcwOSAzMDEuMzgyIDI3NC4yMzYgMjk2LjQxIDI3MyAyODkuOTE1IDI3MyAyODIuMTc3IDI3MyAyNzAuODcgMjc0LjcxNSAyNjIuNjUxIDI3OC4yMjQgMjU3LjU1OSAyODEuNzc0IDI1Mi4zMDcgMjg3LjQ3NyAyNDguMjU3IDI5NS4zMzMgMjQ1LjMzIDMwMy4xOSAyNDIuNDAzIDMxMi42MDEgMjQxIDMyMy44NDggMjQxIDMzNi4wNTEgMjQxIDM0Ni4zOCAyNDIuNTY0IDM1NC45OTUgMjQ1LjgxMSAzNjMuNjQ5IDI0OS4wNTkgMzY5LjE5MiAyNTMuMTA4IDM3MS45NDQgMjU3Ljg4IDM3NC42OTYgMjYyLjY1MSAzNzYuMDkyIDI3MS4wMzEgMzc2LjA5MiAyODIuNjU4TDM3Ni4wOTIgMjg4LjM5MiAzNzUuOTMyIDI4OC4zOTJaIiBmaWxsPSIjRkZGRkZGIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiLz48cGF0aCBkPSJNNDkwIDI0NCA0OTAgMjczLjI0IDQ2Mi4wODQgMjczLjI0IDQ2Mi4wODQgMzkwIDQxNC45MTYgMzkwIDQxNC45MTYgMjczLjI0IDM4NyAyNzMuMjQgMzg3IDI0NCA0OTAgMjQ0WiIgZmlsbD0iI0ZGRkZGRiIgZmlsbC1ydWxlPSJldmVub2RkIi8+PHBhdGggZD0iTTUwMSAyNDQgNTc4Ljc4MSAyNDQgNTc4Ljc4MSAyNzMuMjQgNTQ3Ljc0IDI3My4yNCA1NDcuNzQgMzAwLjkyNiA1NzYuOTUzIDMwMC45MjYgNTc2Ljk1MyAzMjguNjEyIDU0Ny43NCAzMjguNjEyIDU0Ny43NCAzNjAuNzYgNTgyIDM2MC43NiA1ODIgMzkwIDUwMS4xNTkgMzkwIDUwMS4xNTkgMjQ0IDUwMSAyNDRaIiBmaWxsPSIjRkZGRkZGIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiLz48cGF0aCBkPSJNNzA2IDMwNy40NDYgNjU4LjcwNyAzMDcuNDQ2IDY1OC43MDcgMjgxLjc2NUM2NTguNzA3IDI3NC4zMDcgNjU4LjIyNCAyNjkuNjMxIDY1Ny4xMzggMjY3LjczNiA2NTYuMjEzIDI2NS44ODIgNjUzLjg4MSAyNjQuOTE0IDY1MC40NjMgMjY0LjkxNCA2NDYuNTYyIDI2NC45MTQgNjQ0LjA2OCAyNjYuMDAzIDY0Mi45ODMgMjY4LjM0MSA2NDEuODk3IDI3MC41MTggNjQxLjQxNCAyNzUuNTE3IDY0MS40MTQgMjgyLjk3NUw2NDEuNDE0IDM1MS42M0M2NDEuNDE0IDM1OC44MDYgNjQxLjg5NyAzNjMuNDgyIDY0Mi45ODMgMzY1LjY1OSA2NDQuMDY4IDM2Ny44MzYgNjQ2LjQwMSAzNjguOTI1IDY0OS45OCAzNjguOTI1IDY1My41NTkgMzY4LjkyNSA2NTUuNzMxIDM2Ny44MzYgNjU2LjgxNyAzNjUuNjU5IDY1Ny45MDIgMzYzLjQ4MiA2NTguMzg1IDM1OC4zMjIgNjU4LjM4NSAzNTAuMjU5TDY1OC4zODUgMzMxLjcxNSA3MDUuNjc4IDMzMS43MTUgNzA1LjY3OCAzMzcuNDhDNzA1LjY3OCAzNTIuNzE4IDcwNC4yNzEgMzYzLjY0MyA3MDEuNjE3IDM3MC4wMTMgNjk4Ljk2MiAzNzYuMzgzIDY5My4wNTEgMzgxLjk4NiA2ODQuMDQyIDM4Ni44MjQgNjc1LjAzNCAzOTEuNjYyIDY2My44MTQgMzk0IDY1MC40NjMgMzk0IDYzNy4xMTEgMzk0IDYyNS4yNDcgMzkxLjk4NCA2MTYuMjM5IDM4Ny45MTMgNjA3LjIzMSAzODMuODQxIDYwMS4zMTkgMzc4LjI3NyA1OTguMzQzIDM3MC45NCA1OTUuMzY3IDM2My42MDMgNTk0IDM1Mi44OCA1OTQgMzM4LjQwN0w1OTQgMjk1LjI3MUM1OTQgMjg0LjY2OCA1OTQuNDgyIDI3Ni42MDUgNTk1LjQwOCAyNzEuMjg0IDU5Ni4zMzMgMjY1Ljk2MiA1OTguOTg3IDI2MC44NDIgNjAzLjQ5MSAyNTUuODg0IDYwNy45OTUgMjUwLjg4NSA2MTQuMDY4IDI0Ny4wMTUgNjIxLjk5IDI0NC4xOTMgNjI5LjkxMiAyNDEuMzcxIDYzOC45NjEgMjQwIDY0OS4yMTYgMjQwIDY2My4wNSAyNDAgNjc0LjU1MiAyNDIuMTc3IDY4My42IDI0Ni41MzEgNjkyLjYwOCAyNTAuODg1IDY5OC41MiAyNTYuMzI3IDcwMS40OTYgMjYyLjg5OCA3MDQuMzExIDI2OS40MjkgNzA1LjY3OCAyNzkuNTQ4IDcwNS42NzggMjkzLjQxNkw3MDUuNjc4IDMwNy40NDYgNzA2IDMwNy40NDZaIiBmaWxsPSIjRkZGRkZGIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiLz48cGF0aCBkPSJNODMwIDMyOS43MTZDODMwIDM0NC41MDcgODI5LjUxOCAzNTUuMTA3IDgyOC43NTYgMzYxLjE1MyA4MjcuODMyIDM2Ny4zNTkgODI1LjE4MiAzNzMuMDAyIDgyMC42ODYgMzc4LjEyIDgxNi4xODkgMzgzLjIzOSA4MTAuMTI3IDM4Ny4xNDggODAyLjM3OSAzODkuOTcgNzk0LjYzIDM5Mi43OTEgNzg1Ljc1OCAzOTQgNzc1LjUyIDM5NCA3NjUuODg1IDM5NCA3NTcuMDUyIDM5Mi43NTEgNzQ5LjQyNCAzOTAuMDkxIDc0MS42NzYgMzg3LjQzMSA3MzUuNDUzIDM4My41NjEgNzMwLjc5NiAzNzguNDAyIDcyNi4xMzkgMzczLjI0NCA3MjMuMzI4IDM2Ny42ODIgNzIyLjQwNSAzNjEuNTk2IDcyMS40ODIgMzU1LjUxIDcyMSAzNDQuOTUxIDcyMSAzMjkuNjc1TDcyMSAzMDQuMjg0QzcyMSAyODkuNDkzIDcyMS40ODIgMjc4Ljg5MyA3MjIuMjQ0IDI3Mi44NDcgNzIzLjE2OCAyNjYuNjQxIDcyNS44MTcgMjYwLjk5OCA3MzAuMzE0IDI1NS44OCA3MzQuODExIDI1MC43NjEgNzQwLjg3MyAyNDYuODUyIDc0OC42MjEgMjQ0LjAzIDc1Ni4zNyAyNDEuMjA5IDc2NS4yNDIgMjQwIDc3NS40OCAyNDAgNzg1LjExNSAyNDAgNzkzLjk0OCAyNDEuMjQ5IDgwMS41NzYgMjQzLjkwOSA4MDkuMzI0IDI0Ni41NjkgODE1LjU0NyAyNTAuNDM5IDgyMC4yMDQgMjU1LjU5NyA4MjQuODYxIDI2MC43NTYgODI3LjY3MiAyNjYuMzE4IDgyOC41OTUgMjcyLjQwNCA4MjkuNTE4IDI3OC40OSA4MzAgMjg5LjA0OSA4MzAgMzA0LjMyNUw4MzAgMzI5LjcxNiA4MzAgMzI5LjcxNlpNNzgyLjk0NyAyODEuMTVDNzgyLjk0NyAyNzQuMjk4IDc4Mi40NjYgMjY5Ljk0NiA3ODEuNTQyIDI2Ny45MyA3ODAuNjE5IDI2Ni4wNzYgNzc4LjczMiAyNjUuMTA5IDc3NS44MDEgMjY1LjEwOSA3NzMuMzEyIDI2NS4xMDkgNzcxLjQ2NSAyNjUuODc1IDc3MC4yMjEgMjY3LjQ0NyA3NjguOTc2IDI2OS4wMTkgNzY4LjIxMyAyNzMuNTMzIDc2OC4yMTMgMjgxLjE1TDc2OC4yMTMgMzUwLjEwOUM3NjguMjEzIDM1OC42NTQgNzY4LjY5NSAzNjMuOTc0IDc2OS40NTggMzY1Ljk4OSA3NzAuMzgxIDM2OC4wMDQgNzcyLjI2OCAzNjguOTMxIDc3NS41MiAzNjguOTMxIDc3OC43NzIgMzY4LjkzMSA3ODAuNzc5IDM2Ny44NDMgNzgxLjc0MyAzNjUuNTA1IDc4Mi43MDcgMzYzLjE2OCA3ODMuMTQ4IDM1Ny43MjcgNzgzLjE0OCAzNDkuMDIxTDc4My4xNDggMjgxLjE1IDc4Mi45ODcgMjgxLjE1WiIgZmlsbD0iI0ZGRkZGRiIgZmlsbC1ydWxlPSJldmVub2RkIi8+PHBhdGggZD0iTTk1MyAyNDQgOTUzIDM5MCA5MTEuNzkzIDM5MCA4ODcuMzI1IDMyMy42NzMgODg3LjMyNSAzOTAgODQ4IDM5MCA4NDggMjQ0IDg4Ny4zMjUgMjQ0IDkxMy42MzUgMzA5LjY5IDkxMy42MzUgMjQ0IDk1Mi45NiAyNDRaIiBmaWxsPSIjRkZGRkZGIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiLz48L2c+PC9zdmc+" alt="STECON">
+                    </div>
+                    <div class="company-title">Sino-Thai Engineering &amp; Construction Public Company Limited</div>
+                </div>
+
+                <!-- Header Row 2 -->
+                <div class="header-row-2">
+                    <div class="report-title">GROUNDING INSPECTION REPORT</div>
+                    <div class="page-date-box">
+                        <div class="page-box">
+                            <span>Page</span>
+                            <input type="text" class="page-input" data-key="page-current" placeholder="">
+                            <span>of</span>
+                            <input type="text" class="page-input" data-key="page-total" placeholder="">
+                        </div>
+                        <div class="date-box">
+                            Date : <input type="text" class="date-input" data-key="form-date" placeholder="DD/MM/YYYY">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Project Info Grid -->
+                <div class="info-grid">
+                    <!-- Row 1 -->
+                    <div class="label">Project</div>
+                    <div class="colon">:</div>
+                    <div class="val">CHN1A Data Center</div>
+
+                    <div class="label">Report No.</div>
+                    <div class="colon">:</div>
+                    <input class="val" type="text" data-key="sys:itr_number" placeholder="">
+
+                    <!-- Row 2 -->
+                    <div class="label">Owner</div>
+                    <div class="colon">:</div>
+                    <div class="val">Owner/Owner's representative</div>
+
+                    <div class="label">Drawing No.</div>
+                    <div class="colon">:</div>
+                    <input class="val" type="text" data-key="drawing-no" placeholder="">
+
+                    <!-- Row 3 -->
+                    <div class="label">Contractor</div>
+                    <div class="colon">:</div>
+                    <div class="val">Sino-Thai Engineering &amp; Construction Public Company Limited</div>
+
+                    <div class="label">Rev. No.</div>
+                    <div class="colon">:</div>
+                    <input class="val" type="text" data-key="rev-no" placeholder="">
+
+                    <!-- Row 4 -->
+                    <div class="label">Area/Unit</div>
+                    <div class="colon">:</div>
+                    <input class="val" type="text" data-key="sys:area" placeholder="">
+
+                    <div class="label">ITP No.</div>
+                    <div class="colon">:</div>
+                    <div class="val">CHN1A-003-E-ITP-ZZZ-0001</div>
+
+                    <!-- Row 5 -->
+                    <div class="label">Location</div>
+                    <div class="colon">:</div>
+                    <input class="val" type="text" data-key="sys:location" placeholder="">
+                    <div></div>
+                    <div></div>
+                    <div></div>
+                </div>
+            </div>
+
+            <!-- Main Data Grid Table -->
+            <div class="main-grid">
+                <!-- Table Header Row 1 -->
+                <div class="gc th" style="grid-row: span 2;">No.</div>
+                <div class="gc th" style="grid-row: span 2;">Items to be Checked</div>
+                <div class="gc th" style="grid-row: span 2;">Inspection Method</div>
+                <div class="gc th" style="grid-column: span 2;">Result</div>
+                <div class="gc th" style="grid-row: span 2;">Remark</div>
+
+                <!-- Table Header Row 2 -->
+                <div class="gc th">Pass</div>
+                <div class="gc th">Not Pass</div>
+
+                <!-- ═══════════════════════════════════════════════ -->
+                <!-- Section 1: Materials                           -->
+                <!-- ═══════════════════════════════════════════════ -->
+                <div class="gc center bold sec-hdr">1</div>
+                <div class="gc bold sec-hdr">Materials</div>
+                <div class="gc sec-hdr"></div>
+                <div class="gc sec-hdr"></div>
+                <div class="gc sec-hdr"></div>
+                <div class="gc sec-hdr"></div>
+
+                <div class="gc center">1.1</div>
+                <div class="gc indent-1">Ground rod</div>
+                <div class="gc center">Visual</div>
+                <div class="gc gc-check"><input type="checkbox" data-key="pass-1-1"></div>
+                <div class="gc gc-check"><input type="checkbox" data-key="nopass-1-1"></div>
+                <div class="gc"><input type="text" class="remark-input" data-key="remark-1-1"></div>
+
+                <div class="gc center">1.2</div>
+                <div class="gc indent-1">Ground test box</div>
+                <div class="gc center">Visual</div>
+                <div class="gc gc-check"><input type="checkbox" data-key="pass-1-2"></div>
+                <div class="gc gc-check"><input type="checkbox" data-key="nopass-1-2"></div>
+                <div class="gc"><input type="text" class="remark-input" data-key="remark-1-2"></div>
+
+                <div class="gc center">1.3</div>
+                <div class="gc indent-1">Exothermic welding</div>
+                <div class="gc center">Visual</div>
+                <div class="gc gc-check"><input type="checkbox" data-key="pass-1-3"></div>
+                <div class="gc gc-check"><input type="checkbox" data-key="nopass-1-3"></div>
+                <div class="gc"><input type="text" class="remark-input" data-key="remark-1-3"></div>
+
+                <div class="gc center">1.4</div>
+                <div class="gc indent-1">Bare copper</div>
+                <div class="gc center">Visual</div>
+                <div class="gc gc-check"><input type="checkbox" data-key="pass-1-4"></div>
+                <div class="gc gc-check"><input type="checkbox" data-key="nopass-1-4"></div>
+                <div class="gc"><input type="text" class="remark-input" data-key="remark-1-4"></div>
+
+                <div class="gc center">1.5</div>
+                <div class="gc indent-1">IEC01 (THW)</div>
+                <div class="gc center">Visual</div>
+                <div class="gc gc-check"><input type="checkbox" data-key="pass-1-5"></div>
+                <div class="gc gc-check"><input type="checkbox" data-key="nopass-1-5"></div>
+                <div class="gc"><input type="text" class="remark-input" data-key="remark-1-5"></div>
+
+                <div class="gc center">1.6</div>
+                <div class="gc indent-1">Conduit PVC, IMC, Pipe</div>
+                <div class="gc center">Visual</div>
+                <div class="gc gc-check"><input type="checkbox" data-key="pass-1-6"></div>
+                <div class="gc gc-check"><input type="checkbox" data-key="nopass-1-6"></div>
+                <div class="gc"><input type="text" class="remark-input" data-key="remark-1-6"></div>
+
+                <div class="gc center">1.7</div>
+                <div class="gc indent-1">Ground Pit</div>
+                <div class="gc center">Visual</div>
+                <div class="gc gc-check"><input type="checkbox" data-key="pass-1-7"></div>
+                <div class="gc gc-check"><input type="checkbox" data-key="nopass-1-7"></div>
+                <div class="gc"><input type="text" class="remark-input" data-key="remark-1-7"></div>
+
+                <!-- ═══════════════════════════════════════════════ -->
+                <!-- Section 2: Installation                        -->
+                <!-- ═══════════════════════════════════════════════ -->
+                <div class="gc center bold sec-hdr">2</div>
+                <div class="gc bold sec-hdr">Installation</div>
+                <div class="gc sec-hdr"></div>
+                <div class="gc sec-hdr"></div>
+                <div class="gc sec-hdr"></div>
+                <div class="gc sec-hdr"></div>
+
+                <div class="gc center">2.1</div>
+                <div class="gc indent-1">Ground rod location relevant to reference shop drawing.</div>
+                <div class="gc center">Visual</div>
+                <div class="gc gc-check"><input type="checkbox" data-key="pass-2-1"></div>
+                <div class="gc gc-check"><input type="checkbox" data-key="nopass-2-1"></div>
+                <div class="gc"><input type="text" class="remark-input" data-key="remark-2-1"></div>
+
+                <div class="gc center">2.2</div>
+                <div class="gc indent-1">Ground loop are according to shop drawing (at least 900 mm. apart from building).</div>
+                <div class="gc center">Level measurement</div>
+                <div class="gc gc-check"><input type="checkbox" data-key="pass-2-2"></div>
+                <div class="gc gc-check"><input type="checkbox" data-key="nopass-2-2"></div>
+                <div class="gc"><input type="text" class="remark-input" data-key="remark-2-2"></div>
+
+                <div class="gc center">2.3</div>
+                <div class="gc indent-1">Ground grid inside building (if any) according to shop drawing.</div>
+                <div class="gc center">Visual</div>
+                <div class="gc gc-check"><input type="checkbox" data-key="pass-2-3"></div>
+                <div class="gc gc-check"><input type="checkbox" data-key="nopass-2-3"></div>
+                <div class="gc"><input type="text" class="remark-input" data-key="remark-2-3"></div>
+
+                <div class="gc center">2.4</div>
+                <div class="gc indent-1">Conduit size as referenced in the drawings.</div>
+                <div class="gc center">Visual</div>
+                <div class="gc gc-check"><input type="checkbox" data-key="pass-2-4"></div>
+                <div class="gc gc-check"><input type="checkbox" data-key="nopass-2-4"></div>
+                <div class="gc"><input type="text" class="remark-input" data-key="remark-2-4"></div>
+
+                <div class="gc center">2.5</div>
+                <div class="gc indent-1">Size of the ground loop as per the referenced drawings.</div>
+                <div class="gc center">Visual</div>
+                <div class="gc gc-check"><input type="checkbox" data-key="pass-2-5"></div>
+                <div class="gc gc-check"><input type="checkbox" data-key="nopass-2-5"></div>
+                <div class="gc"><input type="text" class="remark-input" data-key="remark-2-5"></div>
+
+                <div class="gc center">2.6</div>
+                <div class="gc indent-1">Size of the ground rod as per the referenced drawings.</div>
+                <div class="gc center">Visual</div>
+                <div class="gc gc-check"><input type="checkbox" data-key="pass-2-6"></div>
+                <div class="gc gc-check"><input type="checkbox" data-key="nopass-2-6"></div>
+                <div class="gc"><input type="text" class="remark-input" data-key="remark-2-6"></div>
+
+                <div class="gc center">2.7</div>
+                <div class="gc indent-1">Bond to equipment, steel column, handrail, external steel stair and steel column.</div>
+                <div class="gc center">Visual</div>
+                <div class="gc gc-check"><input type="checkbox" data-key="pass-2-7"></div>
+                <div class="gc gc-check"><input type="checkbox" data-key="nopass-2-7"></div>
+                <div class="gc"><input type="text" class="remark-input" data-key="remark-2-7"></div>
+
+                <div class="gc center">2.8</div>
+                <div class="gc indent-1">Altitude of bare copper (-900 mm.)</div>
+                <div class="gc center">Level measurement</div>
+                <div class="gc gc-check"><input type="checkbox" data-key="pass-2-8"></div>
+                <div class="gc gc-check"><input type="checkbox" data-key="nopass-2-8"></div>
+                <div class="gc"><input type="text" class="remark-input" data-key="remark-2-8"></div>
+
+                <div class="gc center">2.9</div>
+                <div class="gc indent-1">Altitude of ground rod (-300 mm.)</div>
+                <div class="gc center">Level measurement</div>
+                <div class="gc gc-check"><input type="checkbox" data-key="pass-2-9"></div>
+                <div class="gc gc-check"><input type="checkbox" data-key="nopass-2-9"></div>
+                <div class="gc"><input type="text" class="remark-input" data-key="remark-2-9"></div>
+
+                <div class="gc center">2.10</div>
+                <div class="gc indent-1">Flat level of ground pit.</div>
+                <div class="gc center">Level measurement</div>
+                <div class="gc gc-check"><input type="checkbox" data-key="pass-2-10"></div>
+                <div class="gc gc-check"><input type="checkbox" data-key="nopass-2-10"></div>
+                <div class="gc"><input type="text" class="remark-input" data-key="remark-2-10"></div>
+
+                <div class="gc center">2.11</div>
+                <div class="gc indent-1">Integrity of the bare copper conductor after installation.</div>
+                <div class="gc center">Visual</div>
+                <div class="gc gc-check"><input type="checkbox" data-key="pass-2-11"></div>
+                <div class="gc gc-check"><input type="checkbox" data-key="nopass-2-11"></div>
+                <div class="gc"><input type="text" class="remark-input" data-key="remark-2-11"></div>
+
+                <div class="gc center">2.12</div>
+                <div class="gc indent-1">Install PVC warning tape to indicate that a cable is buried underground.</div>
+                <div class="gc center">Visual</div>
+                <div class="gc gc-check"><input type="checkbox" data-key="pass-2-12"></div>
+                <div class="gc gc-check"><input type="checkbox" data-key="nopass-2-12"></div>
+                <div class="gc"><input type="text" class="remark-input" data-key="remark-2-12"></div>
+
+                <!-- ═══════════════════════════════════════════════ -->
+                <!-- Section 3: Connection Continuity               -->
+                <!-- ═══════════════════════════════════════════════ -->
+                <div class="gc center bold sec-hdr">3</div>
+                <div class="gc bold sec-hdr">Connection Continuity</div>
+                <div class="gc sec-hdr"></div>
+                <div class="gc sec-hdr"></div>
+                <div class="gc sec-hdr"></div>
+                <div class="gc sec-hdr"></div>
+
+                <div class="gc center">3.1</div>
+                <div class="gc indent-1">Exothermic welding shall not have crack after welding.</div>
+                <div class="gc center">Visual</div>
+                <div class="gc gc-check"><input type="checkbox" data-key="pass-3-1"></div>
+                <div class="gc gc-check"><input type="checkbox" data-key="nopass-3-1"></div>
+                <div class="gc"><input type="text" class="remark-input" data-key="remark-3-1"></div>
+
+                <div class="gc center">3.2</div>
+                <div class="gc indent-1">Continuity between connection points of the bare copper conductor.</div>
+                <div class="gc center">Test continuity</div>
+                <div class="gc gc-check"><input type="checkbox" data-key="pass-3-2"></div>
+                <div class="gc gc-check"><input type="checkbox" data-key="nopass-3-2"></div>
+                <div class="gc"><input type="text" class="remark-input" data-key="remark-3-2"></div>
+
+                <!-- ═══════════════════════════════════════════════ -->
+                <!-- Section 4: Location and Level                  -->
+                <!-- ═══════════════════════════════════════════════ -->
+                <div class="gc center bold sec-hdr">4</div>
+                <div class="gc bold sec-hdr">Location and Level</div>
+                <div class="gc sec-hdr"></div>
+                <div class="gc sec-hdr"></div>
+                <div class="gc sec-hdr"></div>
+                <div class="gc sec-hdr"></div>
+
+                <div class="gc center">4.1</div>
+                <div class="gc indent-1">Refer working drawing.</div>
+                <div class="gc center">Visual</div>
+                <div class="gc gc-check"><input type="checkbox" data-key="pass-4-1"></div>
+                <div class="gc gc-check"><input type="checkbox" data-key="nopass-4-1"></div>
+                <div class="gc"><input type="text" class="remark-input" data-key="remark-4-1"></div>
+
+                <!-- Empty rows to fill space -->
+                <div class="gc"></div><div class="gc"></div><div class="gc"></div><div class="gc"></div><div class="gc"></div><div class="gc"></div>
+                <div class="gc"></div><div class="gc"></div><div class="gc"></div><div class="gc"></div><div class="gc"></div><div class="gc"></div>
+
+
+            </div>
+
+            <!-- Footer Area -->
+            <div class="footer-area section-box">
+                <div class="note-row">
+                    <div class="note-line-1">
+                        <span>Note:</span>
+                        <input type="text" data-key="note-1" placeholder="">
+                    </div>
+                    <div class="note-line-2">
+                        <input type="text" data-key="note-2" placeholder="">
+                    </div>
+                </div>
+
+                <div class="signature-section">
+                    <!-- Block 1 -->
+                    <div class="sig-block">
+                        <!-- Row 1 -->
+                        <div class="sig-title-cell">
+                            <div>Requested by<br><span class="normal">MEP</span></div>
+                        </div>
+                        <div class="sig-line-cell" data-sigkey="sig-requested" data-siglabel="Requested by - Electrical">
+                            <div class="sig-line-wrap">
+                                <img class="sig-preview" id="prev-sig-requested" src="">
+                                <div class="sig-line"></div>
+                            </div>
+                            <div class="sig-date">Sign / Date</div>
+                        </div>
+                        <!-- Row 2 -->
+                        <div class="sig-title-cell"></div>
+                        <div class="sig-line-cell"></div>
+                    </div>
+
+                    <!-- Block 2 -->
+                    <div class="sig-block">
+                        <!-- Row 1 -->
+                        <div class="sig-title-cell">
+                            <div>Inspected by<br><span class="normal">SINO-THAI [QC]</span></div>
+                        </div>
+                        <div class="sig-line-cell" data-sigkey="sig-inspected" data-siglabel="Inspected by - SINO-THAI [QC]">
+                            <div class="sig-line-wrap">
+                                <img class="sig-preview" id="prev-sig-inspected" src="">
+                                <div class="sig-line"></div>
+                            </div>
+                            <div class="sig-date">Sign / Date</div>
+                        </div>
+                        <!-- Row 2 -->
+                        <div class="sig-title-cell">
+                            <div>Witness by<br><span class="normal">JEC</span></div>
+                        </div>
+                        <div class="sig-line-cell" data-sigkey="sig-witness" data-siglabel="Witness by - JEC">
+                            <div class="sig-line-wrap">
+                                <img class="sig-preview" id="prev-sig-witness" src="">
+                                <div class="sig-line"></div>
+                            </div>
+                            <div class="sig-date">Sign / Date</div>
+                        </div>
+                    </div>
+
+                    <!-- Block 3 -->
+                    <div class="sig-block">
+                        <!-- Row 1 -->
+                        <div class="sig-title-cell">
+                            <div>Acknowledged by<br><span class="normal">Owner/Owner<br>Representative</span></div>
+                        </div>
+                        <div class="sig-line-cell" data-sigkey="sig-acknowledged" data-siglabel="Acknowledged by - Owner">
+                            <div class="sig-line-wrap">
+                                <img class="sig-preview" id="prev-sig-acknowledged" src="">
+                                <div class="sig-line"></div>
+                            </div>
+                            <div class="sig-date">Sign / Date</div>
+                        </div>
+                        <!-- Row 2 -->
+                        <div class="sig-title-cell"></div>
+                        <div class="sig-line-cell"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form Number -->
+            <div class="form-no">
+                Form No: EE-002
+            </div>
+
+        </div>
+        <!-- end content-wrapper -->
+    </div>
+    <!-- end a4-container -->
+
+<script>
+    const STORE_KEY = 'EE-002_Grounding';
+
+    function saveData() {
+        const data = JSON.parse(localStorage.getItem(STORE_KEY) || '{}');
+        document.querySelectorAll('[data-key]').forEach(function(el) {
+            if (el.type === 'checkbox') {
+                data[el.dataset.key] = el.checked;
+            } else {
+                data[el.dataset.key] = el.value;
+            }
+        });
+        localStorage.setItem(STORE_KEY, JSON.stringify(data));
+    }
+
+    function loadData() {
+        const saved = localStorage.getItem(STORE_KEY);
+        if (!saved) return;
+        const data = JSON.parse(saved);
+        document.querySelectorAll('[data-key]').forEach(function(el) {
+            if (data[el.dataset.key] === undefined) return;
+            if (el.type === 'checkbox') {
+                el.checked = data[el.dataset.key];
+            } else {
+                el.value = data[el.dataset.key];
+            }
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        loadData();
+
+        // Auto-fill today's date into form-date if still blank after loadData
+        (function () {
+            var dateEl = document.querySelector('[data-key="form-date"]');
+            if (dateEl && !dateEl.value.trim()) {
+                var d  = new Date();
+                var dd = String(d.getDate()).padStart(2, '0');
+                var mm = String(d.getMonth() + 1).padStart(2, '0');
+                var yyyy = d.getFullYear();
+                dateEl.value = dd + '/' + mm + '/' + yyyy;
+                saveData();
+            }
+        })();
+
+        document.querySelectorAll('[data-key]').forEach(function(el) {
+            var evt = el.type === 'checkbox' ? 'change' : 'input';
+            el.addEventListener(evt, saveData);
+        });
+
+        // ── Arrow-key navigation between inputs ───────────────────────────
+        document.addEventListener('keydown', function(e) {
+            if (!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) return;
+            var t = e.target;
+            if (!t.matches('[data-key]')) return;
+            if (e.key === 'ArrowLeft'  && t.selectionStart !== 0) return;
+            if (e.key === 'ArrowRight' && t.selectionEnd   !== (t.value || '').length) return;
+            var inputs = Array.from(document.querySelectorAll('[data-key]'));
+            var rc = t.getBoundingClientRect();
+            var cx = rc.left + rc.width  / 2;
+            var cy = rc.top  + rc.height / 2;
+            var best = null, bestScore = Infinity;
+            inputs.forEach(function(el) {
+                if (el === t) return;
+                var r  = el.getBoundingClientRect();
+                var ex = r.left + r.width  / 2;
+                var ey = r.top  + r.height / 2;
+                var dx = ex - cx, dy = ey - cy;
+                var primary, secondary, ok;
+                switch (e.key) {
+                    case 'ArrowRight': ok = dx > 5;  primary =  dx; secondary = Math.abs(dy); break;
+                    case 'ArrowLeft':  ok = dx < -5; primary = -dx; secondary = Math.abs(dy); break;
+                    case 'ArrowDown':  ok = dy > 5;  primary =  dy; secondary = Math.abs(dx); break;
+                    case 'ArrowUp':    ok = dy < -5; primary = -dy; secondary = Math.abs(dx); break;
+                }
+                if (!ok) return;
+                var score = primary + secondary * 3;
+                if (score < bestScore) { bestScore = score; best = el; }
+            });
+            if (best) {
+                e.preventDefault();
+                best.focus();
+                if (best.select) best.select();
+            }
+        });
+        // ─────────────────────────────────────────────────────────────────
+
+        // ── Add Signature (Acrobat-style placement) ────────────────────────
+        (function() {
+            var addSigBtn  = document.getElementById('addSigBtn');
+            var container  = document.querySelector('.a4-container');
+            var placing    = false;
+            var sigBoxes   = []; // { el, key }
+            var SIG_BOX_DEFAULT_W = 140;
+            var SIG_BOX_DEFAULT_H = 55;
+            var sigBoxCounter = 0;
+
+            // -- Popup references (reuse existing popup) --
+            var popup     = document.getElementById('sig-popup');
+            var popCanvas = document.getElementById('sig-popup-canvas');
+            var popCtx    = popCanvas.getContext('2d');
+            var popLabel  = document.getElementById('sig-popup-label');
+            var btnDone   = document.getElementById('sig-popup-done');
+            var btnClear  = document.getElementById('sig-popup-clear');
+            var btnCancel = document.getElementById('sig-popup-cancel');
+            var POPUP_W = 300, POPUP_H = 110;
+            var dpr = window.devicePixelRatio || 1;
+            popCanvas.width  = POPUP_W * dpr;
+            popCanvas.height = POPUP_H * dpr;
+            popCanvas.style.width  = POPUP_W + 'px';
+            popCanvas.style.height = POPUP_H + 'px';
+            popCtx.scale(dpr, dpr);
+            popCtx.strokeStyle = '#0033cc';
+            popCtx.lineWidth   = 1.8;
+            popCtx.lineCap     = 'round';
+            popCtx.lineJoin    = 'round';
+
+            var drawingOnPop = false;
+            function getPopPos(e) {
+                var r = popCanvas.getBoundingClientRect(), src = e.touches ? e.touches[0] : e;
+                return { x: src.clientX - r.left, y: src.clientY - r.top };
+            }
+            popCanvas.addEventListener('mousedown',  function(e) { e.preventDefault(); drawingOnPop = true; var p = getPopPos(e); popCtx.beginPath(); popCtx.moveTo(p.x, p.y); });
+            popCanvas.addEventListener('mousemove',  function(e) { if (!drawingOnPop) return; var p = getPopPos(e); popCtx.lineTo(p.x, p.y); popCtx.stroke(); });
+            popCanvas.addEventListener('mouseup',    function() { drawingOnPop = false; });
+            popCanvas.addEventListener('mouseleave', function() { drawingOnPop = false; });
+            popCanvas.addEventListener('touchstart', function(e) { e.preventDefault(); drawingOnPop = true; var p = getPopPos(e); popCtx.beginPath(); popCtx.moveTo(p.x, p.y); }, { passive: false });
+            popCanvas.addEventListener('touchmove',  function(e) { e.preventDefault(); if (!drawingOnPop) return; var p = getPopPos(e); popCtx.lineTo(p.x, p.y); popCtx.stroke(); }, { passive: false });
+            popCanvas.addEventListener('touchend',   function() { drawingOnPop = false; });
+
+            var currentBox = null;
+
+            function openPopupForBox(box) {
+                currentBox = box;
+                popLabel.textContent = 'Sign here';
+                popCtx.clearRect(0, 0, POPUP_W, POPUP_H);
+                var saved = JSON.parse(localStorage.getItem(STORE_KEY) || '{}');
+                if (saved[box.key]) {
+                    var img = new Image();
+                    img.onload = function() { popCtx.drawImage(img, 0, 0, POPUP_W, POPUP_H); };
+                    img.src = saved[box.key];
+                }
+                popup.classList.add('active');
+                positionPopupNear(box.el);
+            }
+
+            function positionPopupNear(el) {
+                var vv   = window.visualViewport || { pageLeft: window.scrollX, pageTop: window.scrollY, width: window.innerWidth, height: window.innerHeight };
+                var rect = el.getBoundingClientRect();
+                var popW = POPUP_W + 20, popH = POPUP_H + 80;
+                var leftVV  = rect.left + vv.pageLeft;
+                var maxLeft = vv.pageLeft + vv.width - popW - 8;
+                popup.style.left = Math.max(vv.pageLeft + 8, Math.min(leftVV, maxLeft)) + 'px';
+                var topAbove = rect.top + vv.pageTop - popH - 4;
+                var topBelow = rect.bottom + vv.pageTop + 4;
+                popup.style.top = (topAbove > vv.pageTop ? topAbove : topBelow) + 'px';
+            }
+
+            function closePopup(save) {
+                if (save && currentBox) {
+                    var dataUrl = popCanvas.toDataURL();
+                    var saved = JSON.parse(localStorage.getItem(STORE_KEY) || '{}');
+                    saved[currentBox.key] = dataUrl;
+                    localStorage.setItem(STORE_KEY, JSON.stringify(saved));
+                    var img = currentBox.el.querySelector('img');
+                    if (img) { img.src = dataUrl; img.style.display = 'block'; }
+                }
+                popup.classList.remove('active');
+                currentBox = null;
+            }
+
+            btnDone.addEventListener('click',   function() { closePopup(true); });
+            btnCancel.addEventListener('click', function() { closePopup(false); });
+            btnClear.addEventListener('click',  function() {
+                popCtx.clearRect(0, 0, POPUP_W, POPUP_H);
+                if (currentBox) {
+                    var saved = JSON.parse(localStorage.getItem(STORE_KEY) || '{}');
+                    delete saved[currentBox.key];
+                    localStorage.setItem(STORE_KEY, JSON.stringify(saved));
+                    var img = currentBox.el.querySelector('img');
+                    if (img) { img.src = ''; img.style.display = 'none'; }
+                }
+            });
+            document.addEventListener('click', function(e) {
+                if (popup.classList.contains('active') &&
+                    !popup.contains(e.target) &&
+                    !e.target.closest('.placed-sig-box') &&
+                    !e.target.closest('.sig-line-cell[data-sigkey]')) {
+                    closePopup(false);
+                }
+            });
+
+            // -- Create a placed sig box at given container-relative position --
+            function formatDate(d) {
+                var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                return d.getDate() + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
+            }
+
+            function createSigBox(x, y, w, h, key, sigData, dateVal) {
+                var el = document.createElement('div');
+                el.className = 'placed-sig-box';
+                el.style.left   = x + 'px';
+                el.style.top    = y + 'px';
+                el.style.width  = (w || SIG_BOX_DEFAULT_W) + 'px';
+                el.style.height = (h || SIG_BOX_DEFAULT_H) + 'px';
+
+                var controls = document.createElement('div');
+                controls.className = 'sig-box-controls';
+
+                var signBtn = document.createElement('button');
+                signBtn.className = 'sig-box-sign-btn';
+                signBtn.textContent = '\u270d Sign';
+
+                var removeBtn = document.createElement('button');
+                removeBtn.className = 'sig-box-remove-btn';
+                removeBtn.textContent = '\u2715';
+
+                controls.appendChild(signBtn);
+                controls.appendChild(removeBtn);
+
+                var imgEl = document.createElement('img');
+                imgEl.style.display = 'none';
+
+                var resize = document.createElement('div');
+                resize.className = 'sig-box-resize';
+
+                // Date label below the box
+                var dateEl = document.createElement('div');
+                dateEl.className = 'sig-box-date';
+                var dateInput = document.createElement('input');
+                dateInput.type = 'text';
+                dateInput.value = dateVal || formatDate(new Date());
+                dateEl.appendChild(dateInput);
+
+                el.appendChild(controls);
+                el.appendChild(imgEl);
+                el.appendChild(resize);
+                el.appendChild(dateEl);
+                container.appendChild(el);
+
+                var box = { el: el, key: key };
+                sigBoxes.push(box);
+
+                if (sigData) { imgEl.src = sigData; imgEl.style.display = 'block'; }
+
+                dateInput.addEventListener('input', function() { el._saveBox && el._saveBox(); });
+
+                signBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    if (document.body.classList.contains('locked')) return;
+                    openPopupForBox(box);
+                });
+
+                removeBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    var saved = JSON.parse(localStorage.getItem(STORE_KEY) || '{}');
+                    delete saved[key];
+                    var boxes = saved['sig-boxes'] || [];
+                    saved['sig-boxes'] = boxes.filter(function(b) { return b.key !== key; });
+                    localStorage.setItem(STORE_KEY, JSON.stringify(saved));
+                    sigBoxes = sigBoxes.filter(function(b) { return b !== box; });
+                    el.remove();
+                });
+
+                makeDraggable(el, resize);
+
+                el._saveBox = function() {
+                    var saved = JSON.parse(localStorage.getItem(STORE_KEY) || '{}');
+                    var boxes = saved['sig-boxes'] || [];
+                    var rec = boxes.find(function(b) { return b.key === key; });
+                    if (!rec) { rec = { key: key }; boxes.push(rec); }
+                    rec.x = parseInt(el.style.left);
+                    rec.y = parseInt(el.style.top);
+                    rec.w = el.offsetWidth;
+                    rec.h = el.offsetHeight;
+                    rec.date = dateInput.value;
+                    saved['sig-boxes'] = boxes;
+                    localStorage.setItem(STORE_KEY, JSON.stringify(saved));
+                };
+
+                return box;
+            }
+
+            function makeDraggable(el, resizeHandle) {
+                var dragging = false, resizing = false;
+                var startX, startY, startL, startT, startW, startH;
+
+                function onMoveStart(e) {
+                    if (document.body.classList.contains('locked')) return;
+                    if (e.target === resizeHandle) return;
+                    if (e.target.closest('.sig-box-controls')) return;
+                    if (e.target.closest('.sig-box-date')) return;
+                    e.preventDefault();
+                    dragging = true;
+                    var src = e.touches ? e.touches[0] : e;
+                    startX = src.clientX; startY = src.clientY;
+                    startL = parseInt(el.style.left); startT = parseInt(el.style.top);
+                    document.addEventListener('mousemove', onMove);
+                    document.addEventListener('mouseup', onEnd);
+                    document.addEventListener('touchmove', onMove, { passive: false });
+                    document.addEventListener('touchend', onEnd);
+                }
+                function onMove(e) {
+                    if (!dragging && !resizing) return;
+                    e.preventDefault();
+                    var src = e.touches ? e.touches[0] : e;
+                    var dx = src.clientX - startX, dy = src.clientY - startY;
+                    if (dragging) {
+                        el.style.left = (startL + dx) + 'px';
+                        el.style.top  = (startT + dy) + 'px';
+                    } else {
+                        el.style.width  = Math.max(60,  startW + dx) + 'px';
+                        el.style.height = Math.max(30, startH + dy) + 'px';
+                    }
+                }
+                function onEnd() {
+                    dragging = resizing = false;
+                    document.removeEventListener('mousemove', onMove);
+                    document.removeEventListener('mouseup', onEnd);
+                    document.removeEventListener('touchmove', onMove);
+                    document.removeEventListener('touchend', onEnd);
+                    el._saveBox && el._saveBox();
+                }
+
+                el.addEventListener('mousedown', onMoveStart);
+                el.addEventListener('touchstart', onMoveStart, { passive: false });
+
+                // Resize handle
+                resizeHandle.addEventListener('mousedown', function(e) {
+                    if (document.body.classList.contains('locked')) return;
+                    e.preventDefault(); e.stopPropagation();
+                    resizing = true;
+                    var src = e.touches ? e.touches[0] : e;
+                    startX = src.clientX; startY = src.clientY;
+                    startW = el.offsetWidth; startH = el.offsetHeight;
+                    document.addEventListener('mousemove', onMove);
+                    document.addEventListener('mouseup', onEnd);
+                });
+                resizeHandle.addEventListener('touchstart', function(e) {
+                    if (document.body.classList.contains('locked')) return;
+                    e.preventDefault(); e.stopPropagation();
+                    resizing = true;
+                    var src = e.touches[0];
+                    startX = src.clientX; startY = src.clientY;
+                    startW = el.offsetWidth; startH = el.offsetHeight;
+                    document.addEventListener('touchmove', onMove, { passive: false });
+                    document.addEventListener('touchend', onEnd);
+                }, { passive: false });
+            }
+
+            // -- Toggle placement mode --
+            addSigBtn.addEventListener('click', function() {
+                placing = !placing;
+                if (placing) {
+                    document.body.classList.add('placing-sig');
+                    addSigBtn.textContent = '✕ Cancel';
+                    addSigBtn.classList.add('placing');
+                } else {
+                    document.body.classList.remove('placing-sig');
+                    addSigBtn.textContent = '✍ Add Signature';
+                    addSigBtn.classList.remove('placing');
+                }
+            });
+
+            // -- Click on container to place sig box --
+            container.addEventListener('click', function(e) {
+                if (!placing) return;
+                if (e.target.closest('.placed-sig-box') || e.target.closest('#btn-group') || e.target.closest('#sig-popup')) return;
+                var rect = container.getBoundingClientRect();
+                var x = e.clientX - rect.left - SIG_BOX_DEFAULT_W / 2;
+                var y = e.clientY - rect.top  - SIG_BOX_DEFAULT_H / 2;
+                x = Math.max(0, Math.min(x, container.offsetWidth  - SIG_BOX_DEFAULT_W));
+                y = Math.max(0, Math.min(y, container.offsetHeight - SIG_BOX_DEFAULT_H));
+                sigBoxCounter++;
+                var key = 'free-sig-' + sigBoxCounter;
+                var box = createSigBox(x, y, SIG_BOX_DEFAULT_W, SIG_BOX_DEFAULT_H, key, null);
+                box.el._saveBox();
+
+                // Exit placement mode
+                placing = false;
+                document.body.classList.remove('placing-sig');
+                addSigBtn.textContent = '✍ Add Signature';
+                addSigBtn.classList.remove('placing');
+
+                // Immediately open sign popup
+                openPopupForBox(box);
+            });
+
+            // -- Restore saved sig boxes on load --
+            (function() {
+                var saved = JSON.parse(localStorage.getItem(STORE_KEY) || '{}');
+                var boxes = saved['sig-boxes'] || [];
+                boxes.forEach(function(rec) {
+                    var num = parseInt((rec.key || '').replace('free-sig-', '')) || 0;
+                    if (num > sigBoxCounter) sigBoxCounter = num;
+                    createSigBox(rec.x, rec.y, rec.w, rec.h, rec.key, saved[rec.key] || null, rec.date || null);
+                });
+            })();
+        })();
+        // ─── End Add Signature ───────────────────────────────────────────────
+
+        // Edit/Lock toggle
+        var btn = document.getElementById('editToggleBtn');
+        var isLocked = true;
+
+        function applyState() {
+            if (isLocked) {
+                document.body.classList.add('locked');
+                btn.textContent = '✏️ Edit';
+                btn.className = 'edit-btn locked';
+                document.getElementById('addSigBtn').style.display = 'none';
+            } else {
+                document.body.classList.remove('locked');
+                btn.textContent = '🔒 Lock';
+                btn.className = 'edit-btn unlocked';
+                document.getElementById('addSigBtn').style.display = '';
+            }
+        }
+
+        btn.addEventListener('click', function() {
+            isLocked = !isLocked;
+            if (isLocked) {
+                // Auto-save everything (fields + signatures) to parent Vue app
+                try {
+                    var allData = JSON.parse(localStorage.getItem(STORE_KEY) || '{}');
+                    var fc = (typeof __FORM_CODE__ !== 'undefined') ? __FORM_CODE__ : null;
+                    parent.postMessage({ type: 'FORM_LOCKED', formCode: fc, payload: allData }, '*');
+                } catch(e) {}
+            }
+            applyState();
+        });
+
+        applyState();
+
+        // ── Pin button group to visual viewport (survives zoom/pan) ──────
+        var btnGroup = document.getElementById('btn-group');
+        function pinBtnGroup() {
+            var vv = window.visualViewport;
+            if (!vv) return;
+            var pad = 24;
+            btnGroup.style.left = (vv.pageLeft + vv.width  - btnGroup.offsetWidth  - pad) + 'px';
+            btnGroup.style.top  = (vv.pageTop  + pad) + 'px';
+        }
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('scroll', pinBtnGroup);
+            window.visualViewport.addEventListener('resize', pinBtnGroup);
+        } else {
+            // Fallback: re-use window events for non-supporting browsers
+            window.addEventListener('scroll', pinBtnGroup);
+            window.addEventListener('resize', pinBtnGroup);
+        }
+        pinBtnGroup();
+        // ─────────────────────────────────────────────────────────────────
+    });
+
+    // ── postMessage bridge (iframe ↔ parent Vue app) ───────────────────
+    window.addEventListener('message', function(e) {
+        if (!e.data || typeof e.data !== 'object') return;
+        if (e.data.type === 'INJECT_FIELDS') {
+            var fields = e.data.payload || {};
+            Object.keys(fields).forEach(function(key) {
+                var el = document.querySelector('[data-key="' + key + '"]');
+                if (!el) return;
+                if (el.type === 'checkbox') { el.checked = !!fields[key]; }
+                else { el.value = fields[key] || ''; }
+            });
+            saveData();
+        }
+        if (e.data.type === 'REQUEST_SAVE') {
+            var data = {};
+            document.querySelectorAll('[data-key]').forEach(function(el) {
+                if (el.type === 'checkbox') { data[el.dataset.key] = el.checked; }
+                else                        { data[el.dataset.key] = el.value;   }
+            });
+            window.parent.postMessage({ type: 'FORM_DATA', payload: data }, '*');
+        }
+    });
+    // ──────────────────────────────────────────────────────────────────
+</script>
+
+<!-- ── PDF Export Test (html2canvas + pdf-lib via CDN) ── -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+<script>
+(function () {
+    'use strict';
+    var MM_TO_PT = 72 / 25.4;
+
+    function dataUrlToBytes(dataUrl) {
+        var b64 = dataUrl.split(',')[1];
+        var bin = atob(b64);
+        var bytes = new Uint8Array(bin.length);
+        for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        return bytes;
+    }
+
+    async function exportTestPdf() {
+        // ── 1. Sync JS .value → HTML attribute ──
+        document.querySelectorAll('input:not([type=checkbox]):not([type=radio])').forEach(function (el) {
+            el.setAttribute('value', el.value);
+        });
+        document.querySelectorAll('textarea').forEach(function (el) {
+            el.textContent = el.value;
+        });
+
+        // ── 2. Inject rendering CSS overrides ──
+        var pdfStyle = document.createElement('style');
+        pdfStyle.id = '__pdf-test-override';
+        pdfStyle.textContent = [
+            'body { padding: 0 !important; margin: 0 !important; min-width: 0 !important; }',
+            '.a4-container { box-shadow: none !important; }',
+            '.info-row, .note-row { align-items: baseline !important; }',
+            '.value { display: block !important; }',
+            '#btn-group, #sig-popup, .edit-btn, .add-sig-btn, .photo-fit-btn, [data-pdf-hide] { display: none !important; }',
+            'input[data-key] { background: transparent !important; }',
+            'input::placeholder { color: transparent !important; }',
+            /* No blue background and no visible box on checkboxes — only the ✓ mark shows */
+            '.gc-check input[type="checkbox"] { -webkit-appearance: none !important; appearance: none !important; background: transparent !important; border: none !important; box-shadow: none !important; }',
+            /* Ensure page-box / date-box divs (replaced inputs) are also transparent */
+            '.page-input { background: transparent !important; }',
+            /* Collapse Sarabun's large Thai line-height so text centres in the 13px cells */
+            '.page-box, .date-box, .page-box *, .date-box * { line-height: 1 !important; }',
+        ].join('\n');
+        document.head.appendChild(pdfStyle);
+
+        try {
+            // ── 3. Wait for Google Fonts ──
+            await Promise.allSettled([
+                document.fonts.load('400 10px Sarabun'),
+                document.fonts.load('400 12px Sarabun'),
+                document.fonts.load('400 13px Sarabun'),
+                document.fonts.load('400 16px Sarabun'),
+                document.fonts.load('400 17px Sarabun'),
+                document.fonts.load('700 12px Sarabun'),
+                document.fonts.load('700 13px Sarabun'),
+                document.fonts.load('700 16px Sarabun'),
+                document.fonts.load('700 17px Sarabun'),
+                document.fonts.ready,
+            ]);
+            await new Promise(function (r) { setTimeout(r, 200); });
+
+            // ── 4. Capture .a4-container, auto-detect size ──
+            var a4 = document.querySelector('.a4-container');
+            var WMM = 210;
+            var pixPerMm = a4.offsetWidth / WMM;
+            var HMM = Math.ceil(a4.scrollHeight / pixPerMm);
+
+            var canvas = await html2canvas(a4, {
+                scale:           2,
+                useCORS:         true,
+                allowTaint:      false,
+                backgroundColor: '#ffffff',
+                logging:         false,
+                onclone: async function (cloneDoc) {
+                    cloneDoc.querySelectorAll(
+                        'input:not([type=checkbox]):not([type=radio]):not([type=hidden])'
+                    ).forEach(function (inp) {
+                        var div = cloneDoc.createElement('div');
+                        div.className = inp.className;
+                        div.textContent = inp.getAttribute('value') || '';
+                        div.style.background = 'transparent';
+                        inp.parentNode.replaceChild(div, inp);
+                    });
+                    cloneDoc.querySelectorAll('textarea').forEach(function (ta) {
+                        var div = cloneDoc.createElement('div');
+                        div.className = ta.className;
+                        div.textContent = ta.getAttribute('value') || ta.textContent || '';
+                        div.style.background = 'transparent';
+                        ta.parentNode.replaceChild(div, ta);
+                    });
+                    /* Replace checkbox inputs with plain divs so html2canvas never
+                       renders the native OS checkbox (which ignores -webkit-appearance) */
+                    cloneDoc.querySelectorAll('input[type="checkbox"]').forEach(function (cb) {
+                        var div = cloneDoc.createElement('div');
+                        div.style.cssText = [
+                            'width:15px', 'height:15px', 'display:flex',
+                            'align-items:center', 'justify-content:center',
+                            'background:transparent', 'border:none',
+                            'font-size:13px', 'font-weight:bold', 'line-height:1',
+                            'color:#000', 'flex-shrink:0',
+                        ].join(';');
+                        if (cb.checked) div.textContent = '\u2713';
+                        cb.parentNode.replaceChild(div, cb);
+                    });
+                    await Promise.allSettled([
+                        cloneDoc.fonts.load('400 13px Sarabun'),
+                        cloneDoc.fonts.load('700 13px Sarabun'),
+                        cloneDoc.fonts.ready,
+                    ]).catch(function () {});
+                },
+            });
+
+            // ── 5. Build PDF and download ──
+            var PDFDocument = PDFLib.PDFDocument;
+            var pdfDoc  = await PDFDocument.create();
+            pdfDoc.setTitle('EE-002 Grounding Inspection');
+            var wPt = WMM * MM_TO_PT;
+            var hPt = HMM * MM_TO_PT;
+            var pngBytes = dataUrlToBytes(canvas.toDataURL('image/png'));
+            var pngImage = await pdfDoc.embedPng(pngBytes);
+            var pdfPage  = pdfDoc.addPage([wPt, hPt]);
+            pdfPage.drawImage(pngImage, { x: 0, y: 0, width: wPt, height: hPt });
+
+            var bytes = await pdfDoc.save();
+            var blob  = new Blob([bytes], { type: 'application/pdf' });
+            var url   = URL.createObjectURL(blob);
+            var a     = document.createElement('a');
+            a.href = url;
+            a.download = 'EE-002_Grounding_export_test.pdf';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+        } finally {
+            var s = document.getElementById('__pdf-test-override');
+            if (s) s.remove();
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        document.getElementById('exportPdfBtn').addEventListener('click', async function () {
+            var btn = this;
+            btn.textContent = '\u23F3 Rendering\u2026';
+            btn.disabled = true;
+            try {
+                await exportTestPdf();
+            } catch (e) {
+                alert('Export failed: ' + (e.message || e));
+                console.error(e);
+            } finally {
+                btn.textContent = '\u21B3 Export PDF';
+                btn.disabled = false;
+            }
+        });
+    });
+})();
+</script>
+
+</body>
+
+</html>

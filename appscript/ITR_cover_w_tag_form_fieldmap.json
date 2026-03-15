@@ -1,0 +1,137 @@
+{
+  "itrNo": {
+    "type": "txt",
+    "page": 0,
+    "rect": [
+      397.4785819241053,
+      111.52899061342288,
+      534.6710205078125,
+      127.16395357702993
+    ],
+    "fontsize": 14.6,
+    "font": "Helv",
+    "align": 1,
+    "lines": null,
+    "lineSpacing": null
+  },
+  "discipline": {
+    "type": "txt",
+    "page": 0,
+    "rect": [
+      397.4785819241053,
+      146.79891654063698,
+      534.6710205078125,
+      162.43387950424406
+    ],
+    "fontsize": 14.6,
+    "font": "Helv",
+    "align": 0,
+    "lines": null,
+    "lineSpacing": null
+  },
+  "area": {
+    "type": "txt",
+    "page": 0,
+    "rect": [
+      129.05099487304688,
+      182.06884246785114,
+      306.0178499603827,
+      197.7038054314582
+    ],
+    "fontsize": 14.6,
+    "font": "Helv",
+    "align": 1,
+    "lines": null,
+    "lineSpacing": null
+  },
+  "issueDate": {
+    "type": "date",
+    "page": 0,
+    "rect": [
+      397.4785819241053,
+      182.06884246785114,
+      534.6710205078125,
+      197.7038054314582
+    ],
+    "fontsize": 14.6,
+    "font": "Helv",
+    "align": 0,
+    "lines": null,
+    "lineSpacing": null
+  },
+  "dwgNo": {
+    "type": "txt",
+    "page": 0,
+    "rect": [
+      129.05099487304688,
+      217.33876839506527,
+      306.0178499603827,
+      232.9737313586723
+    ],
+    "fontsize": 14.6,
+    "font": "Helv",
+    "align": 1,
+    "lines": null,
+    "lineSpacing": null
+  },
+  "title": {
+    "type": "ml",
+    "page": 0,
+    "rect": [
+      69.4108645065681,
+      340.31787109375,
+      206.57458975342638,
+      402.3858723640442
+    ],
+    "fontsize": 12.9,
+    "font": "Helv",
+    "align": 0,
+    "lines": 3,
+    "lineSpacing": 1.5
+  },
+  "location": {
+    "type": "txt",
+    "page": 0,
+    "rect": [
+      228.48185861514565,
+      343.1828238292408,
+      365.64712806696105,
+      361.217101481774
+    ],
+    "fontsize": 12.9,
+    "font": "Helv",
+    "align": 1,
+    "lines": null,
+    "lineSpacing": null
+  },
+  "confirmedDate": {
+    "type": "date",
+    "page": 0,
+    "rect": [
+      387.5474190524572,
+      343.1828238292408,
+      524.7182094330778,
+      361.217101481774
+    ],
+    "fontsize": 12.9,
+    "font": "Helv",
+    "align": 1,
+    "lines": null,
+    "lineSpacing": null
+  },
+  "sig_mep": {
+    "type": "sig",
+    "page": 0,
+    "rect": [
+      119.10900115966797,
+      631.7004151726076,
+      206.57458975342638,
+      664.9703410998217
+    ],
+    "fontsize": 12.9,
+    "font": "Helv",
+    "align": 1,
+    "lines": null,
+    "lineSpacing": null
+  }
+}

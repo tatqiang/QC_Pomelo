@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Export Test — EE-002</title>
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            font-size: 13px;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            background: #2a2d3a;
+        }
+
+        /* ── Sidebar ─────────────────────────────────────────────────── */
+        #sb {
+            width: 290px;
+            min-width: 290px;
+            background: #151823;
+            color: #cdd;
+            padding: 16px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 9px;
+            overflow-y: auto;
+        }
+
+        #sb h1   { font-size: 14px; font-weight: 700; color: #fff; }
+        #sb .sub { font-size: 11px; color: #445; margin-top: 2px; }
+
+        #status {
+            font-size: 11px; font-weight: 700;
+            padding: 5px 11px; border-radius: 20px;
+            display: inline-flex; align-items: center; gap: 5px;
+            width: fit-content; letter-spacing: 0.02em;
+        }
+        #status.ready  { background: #0d2b1a; color: #3dcc6e; }
+        #status.busy   { background: #2b2510; color: #ffcc44; animation: pulse 1s ease-in-out infinite; }
+        #status.done   { background: #0d1e2e; color: #44aaff; }
+        #status.error  { background: #2b0d0d; color: #ff5555; }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.55} }
+
+        .btn {
+            width: 100%; padding: 9px 14px;
+            border: none; border-radius: 6px;
+            font-family: inherit; font-size: 13px; font-weight: 600;
+            cursor: pointer; transition: filter 0.15s, opacity 0.15s;
+            text-align: left;
+        }
+        .btn:hover:not(:disabled) { filter: brightness(1.12); }
+        .btn:disabled { opacity: 0.38; cursor: not-allowed; }
+        .btn-pixel   { background: #e05c3a; color: #fff; }
+        .btn-object  { background: #1a73e8; color: #fff; }
+        .btn-merge   { background: #28a745; color: #fff; }
+        .btn-dl      { background: #6c4ecf; color: #fff; }
+
+        .hint {
+            font-size: 10.5px; color: #445; line-height: 1.55; padding: 2px 0;
+        }
+        .hint b { color: #556; }
+
+        .sep {
+            font-size: 10px; font-weight: 700;
+            letter-spacing: 0.09em; text-transform: uppercase;
+            color: #334; padding: 5px 0 2px;
+            border-top: 1px solid #1e2235; margin-top: 3px;
+        }
+
+        /* Drop zone */
+        #drop-zone {
+            border: 2px dashed #2a3a4a; border-radius: 6px;
+            padding: 12px 10px; text-align: center;
+            color: #445; font-size: 12px; cursor: pointer; line-height: 1.6;
+            transition: border-color 0.2s, color 0.2s; user-select: none;
+        }
+        #drop-zone:hover, #drop-zone.drag-over { border-color: #1a73e8; color: #aac; }
+        #drop-zone small { font-size: 10px; color: #334; }
+
+        #file-list { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+        #file-list li {
+            display: flex; align-items: center; gap: 6px;
+            background: #1a1e2e; border-radius: 4px;
+            padding: 5px 8px; font-size: 11px; color: #99a;
+        }
+        #file-list li .fname { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        #file-list li .fsize { font-size: 10px; color: #445; white-space: nowrap; }
+        #file-list li .rm-btn {
+            background: none; border: none; color: #446;
+            font-size: 11px; cursor: pointer; padding: 0 2px; line-height: 1;
+        }
+        #file-list li .rm-btn:hover { color: #e04; }
+
+        .order-row { display: flex; flex-direction: column; gap: 6px; }
+        .order-row label {
+            display: flex; align-items: center; gap: 8px;
+            font-size: 11px; color: #778; cursor: pointer;
+        }
+        .order-row input[type=radio] { accent-color: #1a73e8; }
+
+        .compare-box {
+            background: #1a1e2e; border-left: 3px solid #334;
+            border-radius: 4px; padding: 8px 10px;
+            font-size: 10.5px; color: #556; line-height: 1.6;
+        }
+
+        .puppet-box {
+            background: #1a1e2e; border-left: 3px solid #1a73e8;
+            border-radius: 4px; padding: 8px 10px;
+            font-size: 10.5px; color: #556; line-height: 1.6;
+        }
+        .puppet-box b { color: #667; }
+
+        #log {
+            flex: 1; min-height: 80px;
+            background: #0a0c14; border-radius: 6px;
+            padding: 8px 10px;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 10.5px; color: #445;
+            overflow-y: auto; line-height: 1.7;
+        }
+
+        /* ── Main / iframe area ─────────────────────────────────────── */
+        #main {
+            flex: 1; overflow: hidden;
+            display: flex; flex-direction: column;
+        }
+        #toolbar {
+            background: #1a1d2a; padding: 6px 14px;
+            font-size: 11px; color: #445;
+            display: flex; gap: 12px; align-items: center;
+            border-bottom: 1px solid #0a0c14;
+        }
+        #toolbar a { color: #1a73e8; text-decoration: none; }
+        #toolbar a:hover { text-decoration: underline; }
+        #form-frame { flex: 1; width: 100%; border: none; display: block; }
+    </style>
+</head>
+<body>
+
+<!-- ── Sidebar ─────────────────────────────────────────────────────────── -->
+<div id="sb">
+    <div>
+        <h1>📄 PDF Export Test</h1>
+        <div class="sub">EE-002 Grounding Inspection</div>
+    </div>
+
+    <div id="status" class="ready">● Ready</div>
+
+    <!-- Pixel PDF (html2canvas — existing production path) -->
+    <div class="sep">Pixel PDF (existing path)</div>
+    <button id="pixel-btn" class="btn btn-pixel">🖼 Export Pixel PDF</button>
+    <div class="hint">
+        Triggers the form's own Export button via <b>postMessage</b>.<br>
+        Same as current production output.
+    </div>
+
+    <!-- Object PDF (Puppeteer — local server required) -->
+    <div class="sep">Object PDF (Puppeteer)</div>
+    <button id="object-btn" class="btn btn-object">📄 Export Object PDF</button>
+    <div class="hint">
+        Requires local server (<code>npm start</code> in <b>htmlForms/test_puppeteer/</b>).<br>
+        Output: <b>vector text</b> · selectable · sharp at any zoom.
+    </div>
+    <div class="puppet-box">
+        <b>Local server:</b> <span id="server-status">checking…</span><br>
+        Run: <code>cd htmlForms/test_puppeteer &amp;&amp; npm start</code>
+    </div>
+    <button id="dl-btn" class="btn btn-dl" style="display:none;">⬇ Download Last Object PDF</button>
+
+    <!-- Comparison tip -->
+    <div class="compare-box">
+        Export both PDFs → open in Acrobat → zoom to 400 %.<br>
+        Pixel: blurry text. Object: sharp, selectable, searchable.
+    </div>
+
+    <!-- Merge section -->
+    <div class="sep">Combine with other PDFs</div>
+    <div id="drop-zone">📂 Drop PDF files here<br><small>or click to browse</small></div>
+    <input id="file-input" type="file" accept=".pdf" multiple style="display:none">
+    <ul id="file-list"></ul>
+
+    <div class="order-row">
+        <label><input type="radio" name="order" value="after" checked> Form PDF first, then uploaded</label>
+        <label><input type="radio" name="order" value="before"> Uploaded PDFs first, then form</label>
+    </div>
+    <button id="merge-btn" class="btn btn-merge" disabled>🔗 Merge &amp; Download</button>
+    <div id="merge-hint" class="hint" style="color:#334">Export a form PDF first, then merge.</div>
+
+    <div class="sep">Log</div>
+    <div id="log"></div>
+</div>
+
+<!-- ── Form iframe ──────────────────────────────────────────────────────── -->
+<div id="main">
+    <div id="toolbar">
+        <span>EE-002 Grounding Inspection — fill the form, then use the export buttons in the sidebar.</span>
+        <a href="/forms/EE-002_Grounding_Inspection_R_00_E_01.html" target="_blank">open in tab ↗</a>
+    </div>
+    <iframe id="form-frame" src="/forms/EE-002_Grounding_Inspection_R_00_E_01.html"></iframe>
+</div>
+
+<script>
+'use strict';
+
+var PUPPETEER_ORIGIN = 'http://localhost:3099';
+
+// ── State ─────────────────────────────────────────────────────────────────
+var latestPdfBytes  = null;  // Uint8Array from whichever export ran last
+var latestPdfSource = '';    // 'pixel' | 'object'
+var uploadedFiles   = [];
+
+// ── DOM refs ──────────────────────────────────────────────────────────────
+var pixelBtn    = document.getElementById('pixel-btn');
+var objectBtn   = document.getElementById('object-btn');
+var dlBtn       = document.getElementById('dl-btn');
+var mergeBtn    = document.getElementById('merge-btn');
+var mergeHint   = document.getElementById('merge-hint');
+var dropZone    = document.getElementById('drop-zone');
+var fileInput   = document.getElementById('file-input');
+var fileListEl  = document.getElementById('file-list');
+var statusEl    = document.getElementById('status');
+var logEl       = document.getElementById('log');
+var serverSt    = document.getElementById('server-status');
+var formFrame   = document.getElementById('form-frame');
+
+// ── Utilities ─────────────────────────────────────────────────────────────
+function setStatus(cls, text) {
+    statusEl.className = 'status ' + cls;
+    statusEl.textContent = '● ' + text;
+    statusEl.id = 'status';
+}
+
+function addLog(msg, color) {
+    var line = document.createElement('div');
+    var ts   = new Date().toTimeString().slice(0, 8);
+    line.textContent = '[' + ts + '] ' + msg;
+    if (color) line.style.color = color;
+    logEl.appendChild(line);
+    logEl.scrollTop = logEl.scrollHeight;
+}
+
+function fmtSize(b) {
+    return b < 1048576 ? (b/1024).toFixed(1)+' KB' : (b/1048576).toFixed(2)+' MB';
+}
+
+function downloadBytes(bytes, name) {
+    var blob = new Blob([bytes], { type: 'application/pdf' });
+    var url  = URL.createObjectURL(blob);
+    var a    = document.createElement('a');
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a);
+    setTimeout(function() { URL.revokeObjectURL(url); }, 15000);
+}
+
+function setLatest(bytes, source) {
+    latestPdfBytes  = bytes;
+    latestPdfSource = source;
+    dlBtn.style.display = '';
+    dlBtn.textContent   = '⬇ Download Last ' + (source === 'pixel' ? 'Pixel' : 'Object') + ' PDF';
+    updateMergeBtn();
+}
+
+function updateMergeBtn() {
+    var ready = latestPdfBytes && uploadedFiles.length > 0;
+    mergeBtn.disabled = !ready;
+    if (!latestPdfBytes) {
+        mergeHint.textContent = 'Export a form PDF first, then merge.';
+        mergeHint.style.color = '#334';
+    } else if (uploadedFiles.length === 0) {
+        mergeHint.textContent = 'Upload at least one PDF to merge.';
+        mergeHint.style.color = '#334';
+    } else {
+        mergeHint.textContent = uploadedFiles.length + ' file(s) ready to merge with last export.';
+        mergeHint.style.color = '#3d8';
+    }
+}
+
+// ── Read fields from iframe via postMessage ────────────────────────────────
+function getFields() {
+    return new Promise(function(resolve) {
+        var done = false;
+
+        function handler(e) {
+            if (e.source !== formFrame.contentWindow) return;
+            if (!e.data || e.data.type !== 'FORM_DATA') return;
+            if (done) return;
+            done = true;
+            window.removeEventListener('message', handler);
+            clearTimeout(timer);
+            resolve(e.data.payload || {});
+        }
+
+        var timer = setTimeout(function() {
+            if (done) return;
+            done = true;
+            window.removeEventListener('message', handler);
+            // Same-origin fallback
+            try {
+                var data = {};
+                formFrame.contentDocument.querySelectorAll('[data-key]').forEach(function(el) {
+                    data[el.dataset.key] = (el.type === 'checkbox') ? el.checked : el.value;
+                });
+                addLog('Fields read via DOM (' + Object.keys(data).length + ' keys)');
+                resolve(data);
+            } catch(ex) {
+                addLog('⚠ Cannot read fields: ' + ex.message, '#f84');
+                resolve({});
+            }
+        }, 2000);
+
+        window.addEventListener('message', handler);
+        formFrame.contentWindow.postMessage({ type: 'REQUEST_SAVE' }, '*');
+    });
+}
+
+// ── Export: Pixel (triggers form's own export button) ─────────────────────
+//  The form iframe's Export PDF button uses html2canvas internally.
+//  We trigger it via a click on that button.  The download appears from
+//  inside the iframe (normal behaviour) — we don't intercept the bytes here.
+function exportPixel() {
+    setStatus('busy', 'Exporting pixel PDF…');
+    addLog('Triggering iframe Export PDF button (html2canvas path)…');
+    pixelBtn.disabled = true;
+
+    try {
+        var btn = formFrame.contentDocument.getElementById('exportPdfBtn');
+        if (!btn) throw new Error('exportPdfBtn not found in iframe');
+        btn.click();
+        addLog('↓ Pixel PDF downloading from form… (check browser downloads)');
+        // The form handles its own download; we snapshot a dummy Uint8Array so merge
+        // still works if the user also exports object PDF separately.
+        setStatus('ready', 'Pixel export triggered');
+    } catch(err) {
+        addLog('✗ ' + err.message, '#f55');
+        setStatus('error', 'Error');
+    } finally {
+        pixelBtn.disabled = false;
+    }
+}
+
+// ── Export: Object (Puppeteer via local server) ────────────────────────────
+async function exportObject() {
+    setStatus('busy', 'Reading fields…');
+    addLog('Reading form fields via postMessage…');
+    objectBtn.disabled = true;
+
+    try {
+        var fields = await getFields();
+        addLog('Fields: ' + Object.keys(fields).length + ' keys');
+
+        setStatus('busy', 'Puppeteer rendering…');
+        addLog('Sending to Puppeteer server — this takes ~5–10 s…');
+
+        var res = await fetch(PUPPETEER_ORIGIN + '/export-pdf', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fields: fields })
+        });
+
+        if (!res.ok) {
+            var err = await res.json().catch(function() { return { error: res.statusText }; });
+            throw new Error(err.error || res.statusText);
+        }
+
+        var buf   = await res.arrayBuffer();
+        var bytes = new Uint8Array(buf);
+        var sz    = fmtSize(bytes.length);
+
+        addLog('✔ Object PDF — ' + sz + ' (vector, selectable)', '#3dcc6e');
+        setStatus('done', 'Done  ' + sz);
+        setLatest(bytes, 'object');
+
+        if (uploadedFiles.length === 0) {
+            downloadBytes(bytes, 'EE-002_object.pdf');
+            addLog('↓ Downloaded: EE-002_object.pdf');
+        } else {
+            addLog('Click "Merge & Download" to combine with uploads.');
+        }
+
+    } catch(err) {
+        setStatus('error', 'Error');
+        addLog('✗ ' + err.message, '#f55');
+        console.error(err);
+    } finally {
+        objectBtn.disabled = false;
+    }
+}
+
+// ── Merge ─────────────────────────────────────────────────────────────────
+async function mergeAndDownload() {
+    if (!latestPdfBytes || uploadedFiles.length === 0) return;
+    setStatus('busy', 'Merging…');
+    addLog('Merging ' + (uploadedFiles.length + 1) + ' PDFs…');
+    mergeBtn.disabled = true;
+
+    try {
+        var PDFDocument = PDFLib.PDFDocument;
+        var order  = document.querySelector('input[name=order]:checked').value;
+        var merged = await PDFDocument.create();
+
+        async function append(bytes, label) {
+            var doc   = await PDFDocument.load(bytes);
+            var pages = await merged.copyPages(doc, doc.getPageIndices());
+            pages.forEach(function(p) { merged.addPage(p); });
+            addLog('  + ' + label + ' (' + doc.getPageCount() + ' page(s))');
+        }
+
+        var name = 'EE-002_' + latestPdfSource + '.pdf';
+        if (order === 'after') {
+            await append(latestPdfBytes, name);
+            for (var i = 0; i < uploadedFiles.length; i++)
+                await append(await uploadedFiles[i].arrayBuffer(), uploadedFiles[i].name);
+        } else {
+            for (var i = 0; i < uploadedFiles.length; i++)
+                await append(await uploadedFiles[i].arrayBuffer(), uploadedFiles[i].name);
+            await append(latestPdfBytes, name);
+        }
+
+        var out   = await merged.save();
+        var total = (await PDFDocument.load(out)).getPageCount();
+        var sz    = fmtSize(out.length);
+
+        addLog('✔ Merged: ' + total + ' pages, ' + sz, '#3dcc6e');
+        setStatus('done', total + ' pages  ' + sz);
+        downloadBytes(out, 'EE-002_merged.pdf');
+        addLog('↓ Downloaded: EE-002_merged.pdf');
+
+    } catch(err) {
+        setStatus('error', 'Merge error');
+        addLog('✗ ' + err.message, '#f55');
+        console.error(err);
+    } finally {
+        updateMergeBtn();
+    }
+}
+
+// ── File management ───────────────────────────────────────────────────────
+function renderFileList() {
+    fileListEl.innerHTML = '';
+    uploadedFiles.forEach(function(f, i) {
+        var li  = document.createElement('li');
+        var nm  = document.createElement('span');  nm.className   = 'fname'; nm.textContent = f.name;
+        var sz  = document.createElement('span');  sz.className   = 'fsize'; sz.textContent = fmtSize(f.size);
+        var btn = document.createElement('button'); btn.className = 'rm-btn'; btn.textContent = '✕';
+        btn.title = 'Remove';
+        btn.addEventListener('click', (function(idx) {
+            return function() { uploadedFiles.splice(idx, 1); renderFileList(); updateMergeBtn(); };
+        })(i));
+        li.appendChild(nm); li.appendChild(sz); li.appendChild(btn);
+        fileListEl.appendChild(li);
+    });
+    updateMergeBtn();
+}
+
+function addFiles(files) {
+    Array.from(files).forEach(function(f) {
+        if (!f.name.toLowerCase().endsWith('.pdf')) {
+            addLog('⚠ Skipped (not PDF): ' + f.name, '#f84'); return;
+        }
+        uploadedFiles.push(f);
+        addLog('+ ' + f.name + ' (' + fmtSize(f.size) + ')');
+    });
+    renderFileList();
+}
+
+// ── Events ────────────────────────────────────────────────────────────────
+pixelBtn.addEventListener('click',  exportPixel);
+objectBtn.addEventListener('click', exportObject);
+dlBtn.addEventListener('click', function() {
+    if (latestPdfBytes) {
+        downloadBytes(latestPdfBytes, 'EE-002_' + latestPdfSource + '.pdf');
+        addLog('↓ Re-downloaded EE-002_' + latestPdfSource + '.pdf');
+    }
+});
+mergeBtn.addEventListener('click', mergeAndDownload);
+dropZone.addEventListener('click', function() { fileInput.click(); });
+fileInput.addEventListener('change', function() { addFiles(fileInput.files); fileInput.value = ''; });
+dropZone.addEventListener('dragover',  function(e) { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', function()  { dropZone.classList.remove('drag-over'); });
+dropZone.addEventListener('drop', function(e) {
+    e.preventDefault(); dropZone.classList.remove('drag-over');
+    addFiles(e.dataTransfer.files);
+});
+
+// ── Init ──────────────────────────────────────────────────────────────────
+(function() {
+    addLog('Checking Puppeteer server at ' + PUPPETEER_ORIGIN + '…');
+    fetch(PUPPETEER_ORIGIN + '/ping', { signal: AbortSignal.timeout(3000) })
+        .then(function(r) { return r.json(); })
+        .then(function() {
+            serverSt.textContent = '● online';
+            serverSt.style.color = '#3dcc6e';
+            addLog('Puppeteer server — online ✔', '#3dcc6e');
+        })
+        .catch(function() {
+            serverSt.textContent = '● offline (Object PDF unavailable)';
+            serverSt.style.color = '#f84';
+            objectBtn.disabled = true;
+            addLog('Puppeteer server offline — Object PDF disabled. Pixel PDF still works.', '#f84');
+        });
+
+    updateMergeBtn();
+    addLog('Page ready. Fill the form, then export.');
+})();
+</script>
+
+</body>
+</html>
