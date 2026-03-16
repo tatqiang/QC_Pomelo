@@ -11,6 +11,7 @@ DO $$ BEGIN
     'project_admin',     -- Full control of this project
     'project_manager',   -- Manage tasks, team, gantt
     'planner',           -- Create/edit tasks, WBS, schedule
+    'qc_admin',          -- Manage QC team, approve ITRs, all QC activities
     'qc_engineer',       -- Manage ITRs, ITPs, inspections
     'qc_inspector',      -- Submit inspection reports, attachments
     'viewer'             -- Read-only access
@@ -254,6 +255,26 @@ INSERT INTO public.project_role_permissions (role, permission_code) VALUES
   ('planner', 'manage_areas'),
   ('planner', 'view_reports'),
   ('planner', 'export_data')
+ON CONFLICT (role, permission_code) DO NOTHING;
+
+-- qc_admin → QC team management + full QC permissions
+INSERT INTO public.project_role_permissions (role, permission_code) VALUES
+  ('qc_admin', 'project_team'),
+  ('qc_admin', 'view_gantt'),
+  ('qc_admin', 'manage_areas'),
+  ('qc_admin', 'manage_disciplines'),
+  ('qc_admin', 'manage_itr_types'),
+  ('qc_admin', 'manage_itr_statuses'),
+  ('qc_admin', 'create_itrs'),
+  ('qc_admin', 'edit_itrs'),
+  ('qc_admin', 'delete_itrs'),
+  ('qc_admin', 'advance_itr_workflow'),
+  ('qc_admin', 'upload_attachments'),
+  ('qc_admin', 'approve_itrs'),
+  ('qc_admin', 'manage_itps'),
+  ('qc_admin', 'manage_materials'),
+  ('qc_admin', 'view_reports'),
+  ('qc_admin', 'export_data')
 ON CONFLICT (role, permission_code) DO NOTHING;
 
 -- qc_engineer → ITRs full, ITPs, materials, config, reports

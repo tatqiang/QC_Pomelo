@@ -34,6 +34,7 @@ export type ProjectRole =
     | 'project_admin'
     | 'project_manager'
     | 'planner'
+    | 'qc_admin'
     | 'qc_engineer'
     | 'qc_inspector'
     | 'viewer'
@@ -139,6 +140,7 @@ export const PROJECT_ROLE_LABELS: Record<ProjectRole, string> = {
     project_admin: 'Project Admin',
     project_manager: 'Project Manager',
     planner: 'Planner',
+    qc_admin: 'QC Admin',
     qc_engineer: 'QC Engineer',
     qc_inspector: 'QC Inspector',
     viewer: 'Viewer',
@@ -148,6 +150,7 @@ export const PROJECT_ROLE_COLORS: Record<ProjectRole, string> = {
     project_admin: 'bg-red-100 text-red-800',
     project_manager: 'bg-purple-100 text-purple-800',
     planner: 'bg-blue-100 text-blue-800',
+    qc_admin: 'bg-orange-100 text-orange-800',
     qc_engineer: 'bg-teal-100 text-teal-800',
     qc_inspector: 'bg-cyan-100 text-cyan-800',
     viewer: 'bg-gray-100 text-gray-600',
@@ -157,6 +160,7 @@ export const PROJECT_ROLE_DESCRIPTIONS: Record<ProjectRole, string> = {
     project_admin: 'Full control of this project — settings, team, and all data',
     project_manager: 'Manage tasks, team, gantt, config, ITRs, and reports',
     planner: 'Create/edit tasks, WBS, gantt chart, and areas',
+    qc_admin: 'Manage QC team, approve ITRs, ITPs, materials, and all QC activities',
     qc_engineer: 'Manage ITRs, ITPs, materials, inspections, and approvals',
     qc_inspector: 'Submit inspection reports and upload attachments',
     viewer: 'Read-only access to all project data',
@@ -166,6 +170,7 @@ export const ALL_PROJECT_ROLES: ProjectRole[] = [
     'project_admin',
     'project_manager',
     'planner',
+    'qc_admin',
     'qc_engineer',
     'qc_inspector',
     'viewer',

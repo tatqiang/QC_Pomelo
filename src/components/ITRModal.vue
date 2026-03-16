@@ -77,7 +77,7 @@
               </div>
               <span
                 class="mt-1 text-center text-[0.6rem] leading-tight"
-                :class="selectedStep === step.code ? 'font-bold text-[#81938A]' : 'text-gray-500'"
+                :class="selectedStep === step.code ? 'font-bold text-red-600' : 'text-gray-500'"
                 style="max-width: 72px; white-space: normal;"
               >{{ step.label }}</span>
             </div>
@@ -173,6 +173,67 @@
                   <span class="text-gray-300">·</span>
                   <span>{{ new Date(liveItr.draft_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) }}</span>
                 </template>
+              </div>
+
+              <!-- QC in Charge -->
+              <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">QC in Charge</label>
+
+                <!-- Selected chips (both modes) -->
+                <div v-if="localQcUserIds.length" class="flex flex-wrap gap-1.5 mb-1.5">
+                  <span
+                    v-for="uid in localQcUserIds" :key="uid"
+                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-teal-50 text-teal-700 border border-teal-200"
+                  >
+                    <span class="mdi mdi-account-check text-sm leading-none"></span>
+                    {{ qcMemberLabel(uid) }}
+                    <button v-if="isDraftEditable" type="button" @click="localQcUserIds = localQcUserIds.filter(id => id !== uid)"
+                      class="ml-0.5 text-teal-400 hover:text-red-500 transition leading-none">
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                      </svg>
+                    </button>
+                  </span>
+                </div>
+                <div v-else-if="!isDraftEditable" class="text-xs text-gray-400 italic">— None assigned —</div>
+
+                <!-- Edit mode: searchable dropdown -->
+                <div v-if="isDraftEditable" class="relative">
+                  <div class="flex items-center gap-1.5 border border-gray-300 bg-white rounded px-2.5 py-1.5">
+                    <svg class="w-3.5 h-3.5 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z"/>
+                    </svg>
+                    <input
+                      v-model="qcSearch"
+                      type="text"
+                      placeholder="Search QC member…"
+                      class="flex-1 text-sm bg-transparent outline-none placeholder-gray-400"
+                      @focus="qcDropOpen = true"
+                      @blur="setTimeout(() => { qcDropOpen = false }, 150)"
+                    />
+                  </div>
+                  <!-- Dropdown -->
+                  <div v-if="qcDropOpen"
+                    class="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded shadow-lg max-h-48 overflow-y-auto"
+                  >
+                    <p v-if="qcFilteredMembers.length === 0" class="text-xs text-gray-400 px-3 py-2">No QC members found</p>
+                    <button
+                      v-for="m in qcFilteredMembers" :key="m.user_id"
+                      type="button"
+                      :disabled="localQcUserIds.includes(m.user_id)"
+                      class="w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-teal-50 transition disabled:opacity-40 disabled:cursor-default"
+                      @mousedown.prevent="localQcUserIds.includes(m.user_id) ? null : (localQcUserIds.push(m.user_id), qcSearch = '', qcDropOpen = false)"
+                    >
+                      <span class="flex-1 text-gray-800 font-medium">
+                        {{ m.first_name ? (m.first_name + (m.last_name ? ' ' + m.last_name : '')) : m.email }}
+                      </span>
+                      <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-teal-50 text-teal-700 border border-teal-200 shrink-0">{{ qcMemberRoleBadge(m) }}</span>
+                      <svg v-if="localQcUserIds.includes(m.user_id)" class="w-3.5 h-3.5 text-teal-500 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
               </div>
 
               <div class="text-[0.65rem] font-semibold tracking-widest uppercase text-gray-400 mb-1 mt-2">Task & Location</div>
@@ -1494,6 +1555,7 @@ import { useItpStore } from '@/stores/itpStore'
 import { useMaterialStore } from '@/stores/materialStore'
 import { useProjectStore } from '@/stores/projectStore'
 import { useAuthStore } from '@/stores/authStore'
+import { useAuthorityStore } from '@/stores/authorityStore'
 import { useMasterFormStore, type ItrFormSnapshot } from '@/stores/masterFormStore'
 import { useItpChecklistStore, type ItpHtmlChecklist } from '@/stores/itpChecklistStore'
 import { useItrChecklistSelectionStore } from '@/stores/itrChecklistSelectionStore'
@@ -1540,6 +1602,7 @@ const itpStore           = useItpStore()
 const materialStore      = useMaterialStore()
 const projectStore       = useProjectStore()
 const authStore          = useAuthStore()
+const authorityStore     = useAuthorityStore()
 const masterFormStore           = useMasterFormStore()
 const itpChecklistStore         = useItpChecklistStore()
 const itrChecklistSelectionStore = useItrChecklistSelectionStore()
@@ -1809,6 +1872,7 @@ watch(
       })
       selectedStep.value = deriveDefaultStep(itrStatusStore.getCode(itr.status_id))
       localMaterialIds.value = (itr.itr_materials ?? []).map(im => im.material_id)
+      localQcUserIds.value   = (itr.qc_assignments ?? []).map(a => a.user_id)
       userPickedStep.value = false   // allow auto-correct if statuses arrive after this
       // Only re-fetch checklist selections when opening a different ITR.
       // Skipping the fetch when the same ITR is refreshed (e.g. after save)
@@ -1837,6 +1901,7 @@ watch(
       })
       draftChecklistIds.value = []
       localMaterialIds.value = []
+      localQcUserIds.value = []
       selectedStep.value = 'plan'
       userPickedStep.value = false
     }
@@ -1865,6 +1930,7 @@ watch(() => props.modelValue, async (open) => {
     itpStore.itps.length === 0            ? itpStore.fetchItps(pid)            : Promise.resolve(),
     materialStore.materials.length === 0  ? materialStore.fetchMaterials(pid)  : Promise.resolve(),
     masterFormStore.fetchForms(pid),
+    authorityStore.projectMembers.length === 0 ? authorityStore.fetchProjectMembers(pid) : Promise.resolve(),
   ])
 
   // Load snapshots for existing ITR so PDF uses the locked revision
@@ -2004,6 +2070,7 @@ const itpInternalSelectedLabel = computed(() => {
 
 // ── Multi-material list ────────────────────────────────────────────────────
 const localMaterialIds  = ref<string[]>([])
+const localQcUserIds    = ref<string[]>([])
 const materialSearch    = ref('')
 const materialDropOpen  = ref(false)
 const matFilterByDisc   = ref(true)
@@ -2047,6 +2114,41 @@ const addMaterialToList = (materialId: string) => {
 
 const removeMaterialFromList = (materialId: string) => {
   localMaterialIds.value = localMaterialIds.value.filter(id => id !== materialId)
+}
+
+// ── QC in Charge ─────────────────────────────────────────────────────────────
+const qcSearch  = ref('')
+const qcDropOpen = ref(false)
+
+const qcEligibleMembers = computed(() =>
+  authorityStore.projectMembers.filter(m =>
+    m.is_active &&
+    (m.project_roles ?? []).some(r => ['qc_admin', 'qc_engineer', 'qc_inspector'].includes(r))
+  )
+)
+
+const qcFilteredMembers = computed(() => {
+  const q = qcSearch.value.trim().toLowerCase()
+  if (!q) return qcEligibleMembers.value
+  return qcEligibleMembers.value.filter(m => {
+    const name = `${m.first_name ?? ''} ${m.last_name ?? ''}`.trim().toLowerCase()
+    return name.includes(q) || m.email.toLowerCase().includes(q)
+  })
+})
+
+const qcMemberLabel = (userId: string): string => {
+  const m = authorityStore.projectMembers.find(p => p.user_id === userId)
+  if (!m) return userId
+  if (m.first_name) return `${m.first_name}${m.last_name ? ' ' + m.last_name : ''}`.trim()
+  return m.email
+}
+
+const qcMemberRoleBadge = (m: { project_roles?: string[] }): string => {
+  const roles = m.project_roles ?? []
+  if (roles.includes('qc_admin')) return 'QC Admin'
+  if (roles.includes('qc_engineer')) return 'QC Engineer'
+  if (roles.includes('qc_inspector')) return 'QC Inspector'
+  return ''
 }
 
 const isMatType = computed(() => {
@@ -2142,6 +2244,7 @@ const saveDraft = async () => {
   // Snapshot material IDs NOW — before any awaits — because the watcher on
   // liveItr resets localMaterialIds after updateITR mutates the store.
   const pendingMaterialIds = [...localMaterialIds.value]
+  const pendingQcUserIds   = [...localQcUserIds.value]
 
   const draftStatus = itrStatusStore.getByCode('plan')
 
@@ -2232,6 +2335,9 @@ const saveDraft = async () => {
     pendingAdditional.value = []
   }
 
+  // Sync QC assignments
+  await itrStore.syncItrQcAssignments(result.id, pendingQcUserIds)
+
   // Sync checklist selections
   await itrChecklistSelectionStore.syncSelections(result.id, draftChecklistIds.value)
 
@@ -2263,6 +2369,9 @@ const requestInternalInspection = async () => {
   })
   if (!saved) { showSnack(itrStore.error ?? 'Save failed', 'error'); return }
   await clearDataKeysFromFormData(saved)
+
+  // Sync QC assignments
+  await itrStore.syncItrQcAssignments(saved.id, localQcUserIds.value)
 
   // Sync checklist selections (same as saveDraft — user may have changed them in edit mode)
   await itrChecklistSelectionStore.syncSelections(saved.id, draftChecklistIds.value)

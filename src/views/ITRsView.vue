@@ -21,6 +21,11 @@
     </div>
 
     <template v-else>
+      <!-- QC-in-Charge edit backdrop -->
+      <div v-if="qcEditItrId !== null" class="fixed inset-0 z-40" @click="saveActiveQcEdit" />
+      <!-- Req. Inspection Date edit backdrop -->
+      <div v-if="reqDateEditItrId !== null" class="fixed inset-0 z-40" @click="saveActiveReqDateEdit" />
+
       <!-- ─── Header ─────────────────────────────────────────────── -->
       <div class="flex items-center flex-wrap gap-3 mb-4">
         <div>
@@ -93,6 +98,18 @@
             </svg>
           </button>
         </div>
+
+        <!-- Export button -->
+        <button
+          class="inline-flex items-center gap-1.5 px-3 py-2 text-sm border border-gray-300 rounded-md text-gray-600 hover:bg-gray-50 transition"
+          title="Export current view to Excel"
+          @click="exportToExcel"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+          </svg>
+          Export
+        </button>
 
         <!-- Columns picker -->
         <div class="relative ml-auto" ref="colPickerRef">
@@ -275,7 +292,42 @@
                   </template>
                   <!-- Req. Inspection Date -->
                   <template v-else-if="col.id === 'req_date'">
-                    <span class="text-xs text-gray-600 whitespace-nowrap">{{ fmtInspection(item.req_inspection_date) }}</span>
+                    <div class="relative" @click.stop>
+                      <!-- Edit mode -->
+                      <div v-if="reqDateEditItrId === item.id" class="relative z-50">
+                        <input
+                          type="datetime-local"
+                          v-model="reqDateEditValue"
+                          class="text-xs border border-teal-400 rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-teal-400 w-[170px]"
+                          @keydown.enter="saveActiveReqDateEdit"
+                          @keydown.esc="closeReqDateEdit"
+                        />
+                        <div class="flex gap-1 mt-1">
+                          <button
+                            type="button"
+                            :disabled="reqDateSaving"
+                            class="text-[10px] px-2 py-0.5 rounded bg-teal-500 text-white hover:bg-teal-600 disabled:opacity-50"
+                            @click="saveActiveReqDateEdit"
+                          >{{ reqDateSaving ? 'Saving…' : 'Save' }}</button>
+                          <button type="button" class="text-[10px] px-2 py-0.5 rounded bg-gray-100 text-gray-600 hover:bg-gray-200" @click="closeReqDateEdit">Cancel</button>
+                        </div>
+                      </div>
+                      <!-- View mode -->
+                      <div v-else class="flex items-center gap-1 group/reqdate">
+                        <span class="text-xs text-gray-600 whitespace-nowrap">{{ fmtInspection(item.req_inspection_date) }}</span>
+                        <button
+                          v-if="canEditReqDate"
+                          type="button"
+                          title="Edit Req. Inspection Date"
+                          class="opacity-0 group-hover/reqdate:opacity-100 p-0.5 rounded text-gray-400 hover:text-teal-600 hover:bg-teal-50 transition"
+                          @click="openReqDateEdit(item)"
+                        >
+                          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536M9 13l6.364-6.364a2 2 0 012.828 2.828L11.828 15.828a2 2 0 01-1.414.586H8v-2.414a2 2 0 01.586-1.414z"/>
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
                   </template>
                   <!-- Attachments -->
                   <template v-else-if="col.id === 'attachments'">
@@ -295,6 +347,76 @@
                   <!-- Created date -->
                   <template v-else-if="col.id === 'created_at'">
                     <span class="text-xs text-gray-600 whitespace-nowrap">{{ item.draft_at ? new Date(item.draft_at).toLocaleDateString() : '—' }}</span>
+                  </template>
+                  <!-- QC in Charge -->
+                  <template v-else-if="col.id === 'qc_incharge'">
+                    <div class="relative" @click.stop>
+                      <!-- ── Edit mode ── -->
+                      <div v-if="qcEditItrId === item.id" class="relative z-50 min-w-[210px]">
+                        <!-- Selected chips with × -->
+                        <div class="flex flex-wrap gap-1 mb-1.5">
+                          <span
+                            v-for="uid in qcEditUserIds" :key="uid"
+                            class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-teal-100 text-teal-800 border border-teal-300"
+                          >
+                            {{ getQcMemberLabel(uid) }}
+                            <button type="button" class="ml-0.5 leading-none text-teal-500 hover:text-red-500" @click="toggleQcInlineUser(uid)">×</button>
+                          </span>
+                          <span v-if="!qcEditUserIds.length" class="text-xs text-gray-400 italic">None selected</span>
+                        </div>
+                        <!-- Search input -->
+                        <input
+                          v-model="qcEditSearch"
+                          type="text"
+                          placeholder="Search member…"
+                          class="w-full text-xs border border-gray-300 rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-teal-400"
+                          @keydown.esc="closeQcEdit"
+                        />
+                        <!-- Dropdown list -->
+                        <div v-if="qcInlineFiltered.length" class="absolute left-0 mt-0.5 bg-white border border-gray-200 rounded shadow-lg max-h-40 overflow-y-auto text-xs w-full z-50">
+                          <button
+                            v-for="m in qcInlineFiltered" :key="m.user_id"
+                            type="button"
+                            class="w-full text-left px-2 py-1.5 hover:bg-teal-50 flex items-center gap-1.5"
+                            @click="toggleQcInlineUser(m.user_id)"
+                          >
+                            <span class="font-medium text-gray-800">{{ getQcMemberLabel(m.user_id) }}</span>
+                            <span class="text-gray-400 whitespace-nowrap">{{ qcRoleBadge(m) }}</span>
+                          </button>
+                        </div>
+                        <!-- Save / Cancel -->
+                        <div class="flex gap-1 mt-1.5">
+                          <button
+                            type="button"
+                            :disabled="qcEditSaving"
+                            class="text-[10px] px-2 py-0.5 rounded bg-teal-500 text-white hover:bg-teal-600 disabled:opacity-50"
+                            @click="saveQcEdit(item)"
+                          >{{ qcEditSaving ? 'Saving…' : 'Save' }}</button>
+                          <button type="button" class="text-[10px] px-2 py-0.5 rounded bg-gray-100 text-gray-600 hover:bg-gray-200" @click="closeQcEdit">Cancel</button>
+                        </div>
+                      </div>
+                      <!-- ── View mode ── -->
+                      <div v-else class="flex flex-wrap gap-1 items-center group/qc">
+                        <span
+                          v-for="a in item.qc_assignments" :key="a.user_id"
+                          class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-teal-50 text-teal-700 border border-teal-200 whitespace-nowrap"
+                        >
+                          {{ getQcMemberLabel(a.user_id) }}
+                        </span>
+                        <span v-if="!item.qc_assignments?.length" class="text-gray-400 text-xs">—</span>
+                        <button
+                          v-if="canEditQc"
+                          type="button"
+                          title="Edit QC in Charge"
+                          class="opacity-0 group-hover/qc:opacity-100 ml-0.5 p-0.5 rounded text-gray-400 hover:text-teal-600 hover:bg-teal-50 transition"
+                          @click="openQcEdit(item)"
+                        >
+                          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536M9 13l6.364-6.364a2 2 0 012.828 2.828L11.828 15.828a2 2 0 01-1.414.586H8v-2.414a2 2 0 01.586-1.414z"/>
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
                   </template>
                 </td>
                 <!-- Actions (always visible) -->
@@ -447,6 +569,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
+import * as XLSX from 'xlsx'
 import { useItrStore, type ITR } from '@/stores/itrStore'
 import { useItrStatusStore } from '@/stores/itrStatusStore'
 import { useProjectStore } from '@/stores/projectStore'
@@ -525,6 +648,7 @@ const COL_DEFAULTS: ColDef[] = [
   { id: 'attachments', label: 'Files',                  width: '50px',  visible: true },
   { id: 'created_by',  label: 'Created by', width: '120px', visible: false },
   { id: 'created_at',  label: 'Created date', width: '110px', visible: false },
+  { id: 'qc_incharge', label: 'QC in Charge', width: '140px', visible: false },
 ]
 
 const COLS_KEY = 'qc_itr_columns_v2'
@@ -647,6 +771,7 @@ function getColValue(item: ITR, colId: string): string {
     case 'attachments': return String(item.itr_attachments.length)
     case 'created_by':  return item.draft_user ? (((item.draft_user.first_name ?? '') + ' ' + (item.draft_user.last_name ?? '')).trim() || item.draft_user.email) : ''
     case 'created_at':  return item.draft_at ? new Date(item.draft_at).toLocaleDateString() : ''
+    case 'qc_incharge': return (item.qc_assignments ?? []).map(a => getQcMemberLabel(a.user_id)).join(', ')
     default:            return ''
   }
 }
@@ -739,6 +864,32 @@ const displayedITRs = computed(() => {
   return list
 })
 
+// ── Export ────────────────────────────────────────────────────────────────────
+
+function exportToExcel() {
+  const visibleCols = columns.value.filter(c => c.visible && c.id !== 'attachments')
+  const rows = displayedITRs.value.map(item => {
+    const row: Record<string, string> = {}
+    for (const col of visibleCols) {
+      row[col.label] = getColValue(item, col.id)
+    }
+    return row
+  })
+
+  const ws = XLSX.utils.json_to_sheet(rows)
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'ITRs')
+
+  // Build filename: project + active filter label
+  const projectName = (projectStore.activeProject?.name ?? 'Project').replace(/[^a-zA-Z0-9_-]/g, '_')
+  const filterLabel = activeFilter.value === 'all'
+    ? 'All'
+    : (itrStatusStore.sorted.find(s => s.id === activeFilter.value)?.title ?? activeFilter.value)
+  const filterSlug  = filterLabel.replace(/[^a-zA-Z0-9_-]/g, '_')
+  const dateStr     = new Date().toISOString().slice(0, 10)
+  XLSX.writeFile(wb, `ITR_${projectName}_${filterSlug}_${dateStr}.xlsx`)
+}
+
 // ── Lookup helpers ────────────────────────────────────────────────────────────
 
 const getTaskName = (id: string | null) => {
@@ -761,6 +912,134 @@ const getDiscLabel = (id: string | null) => {
   if (!id) return null
   const d = disciplineStore.getById(id)
   return d ? d.code : null
+}
+
+const getQcMemberLabel = (userId: string): string => {
+  const m = authorityStore.projectMembers.find(p => p.user_id === userId)
+  if (!m) return userId.slice(0, 8) + '…'
+  if (m.first_name) return `${m.first_name}${m.last_name ? ' ' + m.last_name : ''}`.trim()
+  return m.email
+}
+
+// ── Inline QC-in-Charge editing ───────────────────────────────────────────────
+
+/** Roles allowed to edit Req. Inspection Date directly from the table */
+const canEditReqDate = computed(() =>
+  authorityStore.currentProjectRoles.some(r => ['project_admin', 'qc_admin'].includes(r))
+)
+
+const reqDateEditItrId = ref<string | null>(null)
+const reqDateEditValue = ref('')
+const reqDateSaving    = ref(false)
+
+/** Convert an ISO/null date to datetime-local input value (local time) */
+const toDatetimeLocal = (iso: string | null | undefined): string => {
+  if (!iso) return ''
+  try {
+    const d = new Date(iso)
+    if (isNaN(d.getTime())) return ''
+    const pad = (n: number) => String(n).padStart(2, '0')
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+  } catch { return '' }
+}
+
+const openReqDateEdit = (itr: ITR) => {
+  reqDateEditItrId.value = itr.id
+  reqDateEditValue.value = toDatetimeLocal(itr.req_inspection_date)
+}
+
+const closeReqDateEdit = () => {
+  reqDateEditItrId.value = null
+  reqDateEditValue.value = ''
+}
+
+const saveActiveReqDateEdit = async () => {
+  if (!reqDateEditItrId.value) return
+  const itr = itrStore.itrs.find(i => i.id === reqDateEditItrId.value)
+  if (!itr) { closeReqDateEdit(); return }
+  reqDateSaving.value = true
+  try {
+    const newVal = reqDateEditValue.value ? new Date(reqDateEditValue.value).toISOString() : null
+    await itrStore.updateITR(itr.id, { req_inspection_date: newVal } as any)
+  } finally {
+    reqDateSaving.value = false
+    closeReqDateEdit()
+  }
+}
+
+/** Roles allowed to edit QC in Charge directly from the table */
+const canEditQc = computed(() =>
+  authorityStore.currentProjectRoles.some(r =>
+    ['project_admin', 'qc_admin', 'qc_engineer', 'qc_inspector'].includes(r)
+  )
+)
+
+/** Members eligible to be assigned as QC in Charge */
+const qcEligibleMembersInline = computed(() =>
+  authorityStore.projectMembers.filter(m =>
+    m.is_active &&
+    (m.project_roles ?? []).some(r => ['qc_admin', 'qc_engineer', 'qc_inspector'].includes(r))
+  )
+)
+
+const qcEditItrId   = ref<string | null>(null)
+const qcEditUserIds = ref<string[]>([])
+const qcEditSearch  = ref('')
+const qcEditSaving  = ref(false)
+
+/** Eligible members not yet selected, filtered by search query */
+const qcInlineFiltered = computed(() => {
+  const q = qcEditSearch.value.toLowerCase().trim()
+  return qcEligibleMembersInline.value.filter(m => {
+    if (qcEditUserIds.value.includes(m.user_id)) return false
+    if (!q) return true
+    const name = `${m.first_name ?? ''} ${m.last_name ?? ''} ${m.email}`.toLowerCase()
+    return name.includes(q)
+  })
+})
+
+const qcRoleBadge = (m: { project_roles?: string[] }): string => {
+  const r = (m.project_roles ?? []).find(r => ['qc_admin', 'qc_engineer', 'qc_inspector'].includes(r))
+  if (r === 'qc_admin') return 'QC Admin'
+  if (r === 'qc_engineer') return 'QC Engr'
+  if (r === 'qc_inspector') return 'Inspector'
+  return ''
+}
+
+const openQcEdit = (itr: ITR) => {
+  qcEditItrId.value   = itr.id
+  qcEditUserIds.value = (itr.qc_assignments ?? []).map(a => a.user_id)
+  qcEditSearch.value  = ''
+}
+
+const closeQcEdit = () => {
+  qcEditItrId.value  = null
+  qcEditSearch.value = ''
+}
+
+const toggleQcInlineUser = (userId: string) => {
+  const idx = qcEditUserIds.value.indexOf(userId)
+  if (idx === -1) qcEditUserIds.value.push(userId)
+  else qcEditUserIds.value.splice(idx, 1)
+  qcEditSearch.value = ''
+}
+
+const saveQcEdit = async (itr: ITR) => {
+  qcEditSaving.value = true
+  try {
+    await itrStore.syncItrQcAssignments(itr.id, qcEditUserIds.value)
+  } finally {
+    qcEditSaving.value = false
+    closeQcEdit()
+  }
+}
+
+/** Save the currently open inline QC edit (called by backdrop click) */
+const saveActiveQcEdit = async () => {
+  if (!qcEditItrId.value) return
+  const itr = itrStore.itrs.find(i => i.id === qcEditItrId.value)
+  if (itr) await saveQcEdit(itr)
+  else closeQcEdit()
 }
 
 // ── Dialog handlers ───────────────────────────────────────────────────────────
@@ -810,6 +1089,7 @@ const load = async (projectId: string) => {
     areaStore.areas.length === 0 ? areaStore.fetchAreas(projectId) : Promise.resolve(),
     itpStore.itps.length === 0 ? itpStore.fetchItps(projectId) : Promise.resolve(),
     materialStore.materials.length === 0 ? materialStore.fetchMaterials(projectId) : Promise.resolve(),
+    authorityStore.fetchProjectMembers(projectId),
   ])
 }
 

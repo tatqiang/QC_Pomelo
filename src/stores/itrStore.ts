@@ -41,6 +41,14 @@ export interface ItrMaterial {
     material?: Pick<Material, 'id' | 'doc_no' | 'title' | 'material_files'> | null
 }
 
+export interface ItrQcAssignment {
+    id: string
+    itr_id: string
+    user_id: string
+    created_at: string
+    user?: { id: string; first_name: string | null; last_name: string | null; email: string } | null
+}
+
 export interface ITR {
     id: string
     project_id: string
@@ -96,6 +104,8 @@ export interface ITR {
     form_data: Record<string, unknown> | null
     /** Joined from users table via draft_by FK */
     draft_user?: { first_name: string | null; last_name: string | null; email: string } | null
+    /** QC in charge assignments (many-to-many via itr_qc_assignments) */
+    qc_assignments: ItrQcAssignment[]
 }
 
 export type ItrInsert = Pick<ITR, 'project_id' | 'title'> &
@@ -177,7 +187,7 @@ export const useItrStore = defineStore('itr', () => {
         try {
             const { data, error: dbErr } = await supabase
                 .from('itrs')
-                .select('*, itr_attachments(*), itr_areas(area_id, sort_order), itr_materials(id, itr_id, material_id, sort_order, created_at, material:materials(id, doc_no, title, material_files(*))), draft_user:users!draft_by(first_name, last_name, email)')
+                .select('*, itr_attachments(*), itr_areas(area_id, sort_order), itr_materials(id, itr_id, material_id, sort_order, created_at, material:materials(id, doc_no, title, material_files(*))), draft_user:users!draft_by(first_name, last_name, email), itr_qc_assignments(id, itr_id, user_id, created_at, user:users(id, first_name, last_name, email))')
                 .eq('project_id', projectId)
                 .order('created_at', { ascending: false })
 
@@ -189,6 +199,7 @@ export const useItrStore = defineStore('itr', () => {
                     .map((r: any) => r.area_id as string),
                 itr_materials: ((row.itr_materials ?? []) as ItrMaterial[])
                     .sort((a, b) => a.sort_order - b.sort_order),
+                qc_assignments: (row.itr_qc_assignments ?? []) as ItrQcAssignment[],
             })) as ITR[]
         } catch (err) {
             error.value = err instanceof Error ? err.message : 'Failed to load ITRs'
@@ -205,6 +216,23 @@ export const useItrStore = defineStore('itr', () => {
             await supabase.from('itr_areas').insert(
                 areaIds.map((aid, i) => ({ itr_id: itrId, area_id: aid, sort_order: i }))
             )
+        }
+    }
+
+    // ── Sync junction table itr_qc_assignments ────────────────────────────────
+    const syncItrQcAssignments = async (itrId: string, userIds: string[]): Promise<void> => {
+        await supabase.from('itr_qc_assignments').delete().eq('itr_id', itrId)
+        if (userIds.length > 0) {
+            await supabase.from('itr_qc_assignments').insert(
+                userIds.map(uid => ({ itr_id: itrId, user_id: uid }))
+            )
+        }
+        const idx = itrs.value.findIndex(i => i.id === itrId)
+        if (idx !== -1) {
+            itrs.value[idx].qc_assignments = userIds.map(uid => ({
+                id: '', itr_id: itrId, user_id: uid,
+                created_at: new Date().toISOString(),
+            }))
         }
     }
 
@@ -225,6 +253,7 @@ export const useItrStore = defineStore('itr', () => {
             await syncItrAreas(itr.id, ids)
             itr.area_ids = ids
             itr.itr_materials = []
+            itr.qc_assignments = []
             itrs.value.unshift(itr)
             return itr
         } catch (err) {
@@ -262,8 +291,9 @@ export const useItrStore = defineStore('itr', () => {
             const idx = itrs.value.findIndex(i => i.id === id)
             if (idx !== -1) {
                 // preserve joined data that is not returned by a plain update select
-                updated.draft_user   = itrs.value[idx].draft_user
-                updated.itr_materials = itrs.value[idx].itr_materials ?? []
+                updated.draft_user     = itrs.value[idx].draft_user
+                updated.itr_materials  = itrs.value[idx].itr_materials ?? []
+                updated.qc_assignments = itrs.value[idx].qc_assignments ?? []
                 itrs.value[idx] = updated
             }
             return updated
@@ -623,7 +653,7 @@ export const useItrStore = defineStore('itr', () => {
     return {
         itrs, loading, error,
         filterStatusId, filterSearch, filteredITRs, stats,
-        fetchITRs, createITR, updateITR, deleteITR, syncItrAreas, clearITRs, refreshFormData,
+        fetchITRs, createITR, updateITR, deleteITR, syncItrAreas, syncItrQcAssignments, clearITRs, refreshFormData,
         advanceStatus, rejectToDraft, generateItrNumber,
         addAttachment, deleteAttachment, getAttachmentsByCategory,
         addItrMaterial, removeItrMaterial, reorderItrMaterials,

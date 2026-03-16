@@ -50,6 +50,14 @@ const PROJECT_ROLE_PERMISSION_MAP: Record<ProjectRole, ProjectPermission[]> = {
         'manage_areas',
         'view_reports', 'export_data',
     ],
+    qc_admin: [
+        'project_team',
+        'view_gantt',
+        'manage_areas', 'manage_disciplines', 'manage_itr_types', 'manage_itr_statuses',
+        'create_itrs', 'edit_itrs', 'delete_itrs', 'advance_itr_workflow', 'upload_attachments', 'approve_itrs',
+        'manage_itps', 'manage_materials',
+        'view_reports', 'export_data',
+    ],
     qc_engineer: [
         'view_gantt',
         'manage_areas', 'manage_disciplines', 'manage_itr_types', 'manage_itr_statuses',
@@ -186,8 +194,10 @@ export const useAuthorityStore = defineStore('authority', () => {
         loading.value = true
         error.value = null
         try {
-            // 1. Insert project_members row
-            const { data: member, error: memberErr } = await supabase
+            // 1. Try to insert project_members row; if already exists, fetch existing
+            let memberId: string
+
+            const { data: inserted, error: memberErr } = await supabase
                 .from('project_members')
                 .insert({
                     project_id: pid,
@@ -195,27 +205,48 @@ export const useAuthorityStore = defineStore('authority', () => {
                     invited_by: invitedBy,
                     is_active: true,
                 })
-                .select()
+                .select('id')
                 .single()
 
-            if (memberErr) throw memberErr
+            if (memberErr) {
+                // 23505 = unique_violation (already a member)
+                if ((memberErr as any).code === '23505') {
+                    const { data: existing, error: fetchErr } = await supabase
+                        .from('project_members')
+                        .select('id')
+                        .eq('project_id', pid)
+                        .eq('user_id', userId)
+                        .single()
+                    if (fetchErr) throw fetchErr
+                    memberId = existing.id
+                    // Re-activate if previously removed
+                    await supabase
+                        .from('project_members')
+                        .update({ is_active: true })
+                        .eq('id', memberId)
+                } else {
+                    throw memberErr
+                }
+            } else {
+                memberId = inserted.id
+            }
 
-            // 2. Insert role assignments
+            // 2. Upsert role assignments
             if (roles.length > 0) {
                 const roleRows = roles.map(role => ({
-                    member_id: member.id,
+                    member_id: memberId,
                     role,
                     granted_by: invitedBy,
                 }))
 
                 const { error: roleErr } = await supabase
                     .from('project_member_roles')
-                    .insert(roleRows)
+                    .upsert(roleRows, { onConflict: 'member_id,role' })
 
                 if (roleErr) throw roleErr
             }
 
-            console.log('✅ Member added with roles:', roles)
+            console.log('✅ Member added/updated with roles:', roles)
             await fetchProjectMembers(pid)
             return true
         } catch (err) {
