@@ -52,7 +52,7 @@
             </svg>
           </div>
           <p class="text-sm font-medium text-gray-500">No to-dos yet</p>
-          <p class="text-xs text-gray-400 mt-1">Add action items for this task</p>
+          <p class="text-xs text-gray-400 mt-1">Add action items for this ITR</p>
         </div>
 
         <!-- Todo list -->
@@ -339,6 +339,7 @@ const props = defineProps<{
   taskId: string | null
   taskName: string
   projectId: string | null
+  itrId?: string | null
 }>()
 
 const emit = defineEmits<{ (e: 'update:modelValue', v: boolean): void }>()
@@ -363,16 +364,26 @@ const memberOptions = computed(() =>
 // ─── Load on open ─────────────────────────────────────────────────────────────
 
 watch(() => props.modelValue, async (open) => {
-  if (open && props.taskId) {
-    await Promise.all([
-      todoStore.fetchTodos(props.taskId),
-      memberOptions.value.length === 0 ? authorityStore.fetchProjectMembers(props.projectId ?? undefined) : Promise.resolve(),
-    ])
+  if (open) {
+    todoStore.todos = []
+    if (props.itrId) {
+      await Promise.all([
+        todoStore.fetchTodosByItr(props.itrId),
+        memberOptions.value.length === 0 ? authorityStore.fetchProjectMembers(props.projectId ?? undefined) : Promise.resolve(),
+      ])
+    } else if (props.taskId) {
+      await Promise.all([
+        todoStore.fetchTodos(props.taskId),
+        memberOptions.value.length === 0 ? authorityStore.fetchProjectMembers(props.projectId ?? undefined) : Promise.resolve(),
+      ])
+    } else {
+      if (memberOptions.value.length === 0) authorityStore.fetchProjectMembers(props.projectId ?? undefined)
+    }
   }
   if (!open) {
-    showAddForm.value  = false
-    editingId.value    = null
-    linkingTodoId.value = null
+    showAddForm.value     = false
+    editingId.value       = null
+    linkingTodoId.value   = null
     uploadingTodoId.value = null
   }
 })
@@ -391,14 +402,15 @@ const openAddForm = () => {
 }
 
 const submitAdd = async () => {
-  if (!addForm.value.title.trim() || !props.taskId || !props.projectId) return
-  // Use member list if loaded, otherwise fall back to just the creator
+  if (!addForm.value.title.trim() || !props.projectId) return
+  if (!props.taskId && !props.itrId) return
   const memberIds = memberOptions.value.length > 0
     ? memberOptions.value.map(m => m.value)
     : (authStore.userId ? [authStore.userId] : [])
   await todoStore.createTodoAndNotify(
     {
-      task_id:     props.taskId,
+      task_id:     props.taskId  ?? null,
+      itr_id:      props.itrId   ?? null,
       project_id:  props.projectId,
       title:       addForm.value.title.trim(),
       assigned_to: addForm.value.assigned_to || null,

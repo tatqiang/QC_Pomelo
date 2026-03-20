@@ -20,7 +20,8 @@ export interface TaskTodoFile {
 
 export interface TaskTodo {
     id: string
-    task_id: string
+    task_id: string | null
+    itr_id: string | null
     project_id: string
     title: string
     notes: string | null
@@ -40,8 +41,12 @@ export interface TaskTodo {
     task_todo_files?: TaskTodoFile[]
 }
 
-export type TaskTodoInsert = Pick<TaskTodo, 'task_id' | 'project_id' | 'title'> &
-    Partial<Pick<TaskTodo, 'notes' | 'link' | 'assigned_to' | 'due_date' | 'sort_order' | 'created_by'>>
+export type TaskTodoInsert = {
+    task_id?: string | null
+    itr_id?: string | null
+    project_id: string
+    title: string
+} & Partial<Pick<TaskTodo, 'notes' | 'link' | 'assigned_to' | 'due_date' | 'sort_order' | 'created_by'>>
 
 export type TaskTodoUpdate = Partial<Pick<TaskTodo, 'title' | 'notes' | 'link' | 'assigned_to' | 'due_date' | 'is_done' | 'sort_order'>>
 
@@ -50,12 +55,13 @@ export type TaskTodoUpdate = Partial<Pick<TaskTodo, 'title' | 'notes' | 'link' |
 export const useTaskTodoStore = defineStore('taskTodo', () => {
     const todos        = ref<TaskTodo[]>([])
     const projectTodos = ref<TaskTodo[]>([])
+    const itrTodosMap  = ref<Record<string, TaskTodo[]>>({})
     const loading      = ref(false)
     const saving       = ref(false)
     const error        = ref<string | null>(null)
     const activeTaskId = ref<string | null>(null)
 
-    // ── Fetch ─────────────────────────────────────────────────────────────────
+    // ── Fetch by task ─────────────────────────────────────────────────────────
 
     const fetchTodos = async (taskId: string): Promise<void> => {
         loading.value  = true
@@ -76,6 +82,54 @@ export const useTaskTodoStore = defineStore('taskTodo', () => {
             console.error('❌ fetchTodos:', err)
         } finally {
             loading.value = false
+        }
+    }
+
+    // ── Fetch by ITR (no task required) ───────────────────────────────────────
+
+    const fetchTodosByItr = async (itrId: string): Promise<void> => {
+        loading.value  = true
+        error.value    = null
+        activeTaskId.value = null
+        try {
+            const { data, error: dbErr } = await supabase
+                .from('task_todos')
+                .select('*, assigned_user:users!assigned_to(first_name, last_name, email), task_todo_files(*)')
+                .eq('itr_id', itrId)
+                .order('sort_order', { ascending: true })
+                .order('created_at', { ascending: true })
+
+            if (dbErr) throw dbErr
+            todos.value = (data as TaskTodo[]) ?? []
+        } catch (err) {
+            error.value = err instanceof Error ? err.message : 'Failed to load to-dos'
+            console.error('❌ fetchTodosByItr:', err)
+        } finally {
+            loading.value = false
+        }
+    }
+
+    // ── Fetch all ITR todos for a project (for inline summary map) ───────────
+
+    const fetchItrTodosForProject = async (projectId: string): Promise<void> => {
+        try {
+            const { data, error: dbErr } = await supabase
+                .from('task_todos')
+                .select('id, itr_id, title, is_done, due_date, sort_order, notes')
+                .eq('project_id', projectId)
+                .not('itr_id', 'is', null)
+                .order('sort_order', { ascending: true })
+                .order('created_at', { ascending: true })
+            if (dbErr) throw dbErr
+            const map: Record<string, TaskTodo[]> = {}
+            for (const t of (data as TaskTodo[])) {
+                if (!t.itr_id) continue
+                if (!map[t.itr_id]) map[t.itr_id] = []
+                map[t.itr_id].push(t)
+            }
+            itrTodosMap.value = map
+        } catch (err) {
+            console.error('❌ fetchItrTodosForProject:', err)
         }
     }
 
@@ -168,8 +222,15 @@ export const useTaskTodoStore = defineStore('taskTodo', () => {
                 .single()
 
             if (dbErr) throw dbErr
+            const updated = data as TaskTodo
+            // Update todos list (task detail panel)
             const idx = todos.value.findIndex(t => t.id === id)
-            if (idx !== -1) todos.value[idx] = data as TaskTodo
+            if (idx !== -1) todos.value[idx] = updated
+            // Update projectTodos list (Todos page) — preserve task join from existing row
+            const pidx = projectTodos.value.findIndex(t => t.id === id)
+            if (pidx !== -1) {
+                projectTodos.value[pidx] = { ...updated, task: projectTodos.value[pidx].task }
+            }
             return true
         } catch (err) {
             error.value = err instanceof Error ? err.message : 'Failed to update to-do'
@@ -344,8 +405,8 @@ export const useTaskTodoStore = defineStore('taskTodo', () => {
     }
 
     return {
-        todos, projectTodos, loading, saving, error, activeTaskId,
-        fetchTodos, fetchProjectTodos, createTodo, createTodoAndNotify, updateTodo, toggleDone, deleteTodo,
+        todos, projectTodos, itrTodosMap, loading, saving, error, activeTaskId,
+        fetchTodos, fetchTodosByItr, fetchItrTodosForProject, fetchProjectTodos, createTodo, createTodoAndNotify, updateTodo, toggleDone, deleteTodo,
         uploadFile, addFolderLink, deleteFile,
         clearTodos,
     }

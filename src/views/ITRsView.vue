@@ -418,6 +418,47 @@
                       </div>
                     </div>
                   </template>
+                  <!-- Comments -->
+                  <template v-else-if="col.id === 'comments'">
+                    <button
+                      v-if="itrCommentStore.commentCounts[item.id]"
+                      type="button"
+                      class="w-full text-left text-xs text-blue-600 hover:text-blue-800 hover:underline leading-tight line-clamp-2 break-words transition"
+                      @click.stop="openDetailWithComments(item)"
+                    >
+                      {{ itrCommentStore.lastCommentBodies[item.id] }}
+                    </button>
+                    <span v-else class="text-gray-300 text-xs">—</span>
+                  </template>
+                  <!-- To-Do -->
+                  <template v-else-if="col.id === 'todos'">
+                    <div
+                      class="flex flex-col gap-0.5 cursor-pointer min-h-[20px]"
+                      @click.stop="openTodosForItr(item)"
+                    >
+                      <template v-if="todoStore.itrTodosMap[item.id]?.length">
+                        <div
+                          v-for="t in todoStore.itrTodosMap[item.id]"
+                          :key="t.id"
+                          class="flex items-center gap-1 text-xs leading-snug"
+                        >
+                          <span
+                            class="flex-shrink-0 w-3 h-3 rounded-full border flex items-center justify-center"
+                            :class="t.is_done ? 'bg-[#81938A] border-[#81938A]' : 'border-gray-300'"
+                          >
+                            <svg v-if="t.is_done" class="w-2 h-2 text-white" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                            </svg>
+                          </span>
+                          <span
+                            class="truncate max-w-[140px]"
+                            :class="t.is_done ? 'text-gray-400 line-through' : 'text-gray-700'"
+                          >{{ t.title }}</span>
+                        </div>
+                      </template>
+                      <span v-else class="text-gray-300 text-xs">—</span>
+                    </div>
+                  </template>
                 </td>
                 <!-- Actions (always visible) -->
                 <td class="px-3 py-2.5">
@@ -454,6 +495,7 @@
     <ITRModal
       v-model="modalOpen"
       :itr="modalITR"
+      :auto-open-comments="openWithComments"
       @saved="onSaved"
       @updated="onModalUpdated"
     />
@@ -463,6 +505,7 @@
       :task-id="todoTaskId"
       :task-name="todoTaskName"
       :project-id="todoProjectId"
+      :itr-id="todoItrId"
     />
 
     <!-- Delete confirm -->
@@ -584,6 +627,7 @@ import ITRModal from '@/components/ITRModal.vue'
 import TaskTodoModal from '@/components/task/TaskTodoModal.vue'
 import { useAuthorityStore } from '@/stores/authorityStore'
 import { useTaskTodoStore } from '@/stores/taskTodoStore'
+import { useItrCommentStore } from '@/stores/itrCommentStore'
 
 const itrStore        = useItrStore()
 const itrStatusStore  = useItrStatusStore()
@@ -595,13 +639,15 @@ const disciplineStore = useDisciplineStore()
 const itpStore        = useItpStore()
 const materialStore   = useMaterialStore()
 const authorityStore  = useAuthorityStore()
-useTaskTodoStore() // pre-init
+const itrCommentStore = useItrCommentStore()
+const todoStore       = useTaskTodoStore()
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
 const selectorOpen    = ref(false)
 const modalOpen       = ref(false)
 const modalITR        = ref<ITR | null>(null)
+const openWithComments = ref(false)
 const deleteDialogOpen = ref(false)
 const deleteTarget    = ref<ITR | null>(null)
 const snackbar = reactive({ show: false, text: '', color: 'success' as string })
@@ -612,12 +658,13 @@ const todoModalOpen    = ref(false)
 const todoTaskId       = ref<string | null>(null)
 const todoTaskName     = ref('')
 const todoProjectId    = ref<string | null>(null)
+const todoItrId        = ref<string | null>(null)
 
 const openTodosForItr = (itr: ITR) => {
-  if (!itr.task_id) { showSnack('This ITR has no linked task — add a task first', 'warning'); return }
-  todoTaskId.value    = itr.task_id
-  todoTaskName.value  = getTaskName(itr.task_id) ?? itr.title
+  todoTaskId.value    = itr.task_id ?? null
+  todoTaskName.value  = itr.task_id ? (getTaskName(itr.task_id) ?? itr.title) : itr.title
   todoProjectId.value = itr.project_id
+  todoItrId.value     = itr.id
   todoModalOpen.value = true
 }
 
@@ -649,6 +696,8 @@ const COL_DEFAULTS: ColDef[] = [
   { id: 'created_by',  label: 'Created by', width: '120px', visible: false },
   { id: 'created_at',  label: 'Created date', width: '110px', visible: false },
   { id: 'qc_incharge', label: 'QC in Charge', width: '140px', visible: false },
+  { id: 'comments',    label: 'Comments',     width: '200px',  visible: true  },
+  { id: 'todos',       label: 'To-Do',        width: '180px',  visible: true  },
 ]
 
 const COLS_KEY = 'qc_itr_columns_v2'
@@ -772,6 +821,7 @@ function getColValue(item: ITR, colId: string): string {
     case 'created_by':  return item.draft_user ? (((item.draft_user.first_name ?? '') + ' ' + (item.draft_user.last_name ?? '')).trim() || item.draft_user.email) : ''
     case 'created_at':  return item.draft_at ? new Date(item.draft_at).toLocaleDateString() : ''
     case 'qc_incharge': return (item.qc_assignments ?? []).map(a => getQcMemberLabel(a.user_id)).join(', ')
+    case 'comments':    return String(itrCommentStore.commentCounts[item.id] ?? 0)
     default:            return ''
   }
 }
@@ -1045,6 +1095,13 @@ const saveActiveQcEdit = async () => {
 // ── Dialog handlers ───────────────────────────────────────────────────────────
 
 const openDetail = (itr: ITR) => {
+  openWithComments.value = false
+  modalITR.value = itr
+  modalOpen.value = true
+}
+
+const openDetailWithComments = (itr: ITR) => {
+  openWithComments.value = true
   modalITR.value = itr
   modalOpen.value = true
 }
@@ -1090,7 +1147,10 @@ const load = async (projectId: string) => {
     itpStore.itps.length === 0 ? itpStore.fetchItps(projectId) : Promise.resolve(),
     materialStore.materials.length === 0 ? materialStore.fetchMaterials(projectId) : Promise.resolve(),
     authorityStore.fetchProjectMembers(projectId),
+    todoStore.fetchItrTodosForProject(projectId),
   ])
+  // Fetch comment counts after ITRs are loaded
+  await itrCommentStore.fetchCountsForItrs(itrStore.itrs.map(i => i.id))
 }
 
 onMounted(async () => {
@@ -1102,6 +1162,12 @@ watch(() => projectStore.activeProjectId, async id => {
   newItrIds.value = []
   if (id) await load(id)
   else itrStore.clearITRs()
+})
+
+watch(todoModalOpen, (open) => {
+  if (!open && projectStore.activeProject) {
+    todoStore.fetchItrTodosForProject(projectStore.activeProject.id)
+  }
 })
 
 onUnmounted(() => { itrStore.clearITRs(); itrStatusStore.clearStatuses() })

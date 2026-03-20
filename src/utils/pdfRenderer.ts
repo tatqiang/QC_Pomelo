@@ -15,19 +15,15 @@
 
 import * as pdfjsLib from 'pdfjs-dist'
 import type { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist'
+// `?url` tells Vite to include the worker file as a static asset and gives us
+// the correct public URL in both dev and production builds.
+import pdfWorkerSrc from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 
 // ── Worker setup ─────────────────────────────────────────────────────────────
-// Vite bundles the worker as a separate chunk when imported with `?url`.
-// We import it lazily so the large worker JS is not in the critical path.
 let workerConfigured = false
 function ensureWorker() {
   if (workerConfigured) return
-  // Point pdf.js at the copy Vite exposes in the public/assets directory.
-  // Using a CDN fallback so it also works if the local worker is not reachable.
-  pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-    'pdfjs-dist/build/pdf.worker.min.mjs',
-    import.meta.url,
-  ).href
+  pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerSrc
   workerConfigured = true
 }
 

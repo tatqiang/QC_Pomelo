@@ -21,29 +21,7 @@
 
       <div class="flex-1"/>
 
-      <!-- View Report — only shown when a report has already been generated this session -->
-      <button
-        v-if="hasGeneratedPages"
-        @click="emit('viewReport')"
-        class="px-3 py-1.5 rounded-lg text-sm font-medium bg-white text-emerald-700 border border-emerald-400
-               hover:bg-emerald-50 transition-colors"
-      >
-        View Report
-      </button>
 
-      <button
-        @click="doGenerate"
-        :disabled="selection.length === 0 || generating"
-        class="px-4 py-1.5 rounded-lg text-sm font-medium bg-emerald-600 text-white
-               hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed
-               transition-colors flex items-center gap-2"
-      >
-        <svg v-if="generating" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8h4z"/>
-        </svg>
-        {{ generating ? 'Generating…' : `Generate Report (${selection.length})` }}
-      </button>
     </div>
 
     <!-- ── Save toast — shown when FORM_LOCKED message is received from form tab ── -->
@@ -185,7 +163,8 @@
                   <p class="text-xs font-medium text-gray-800 truncate">{{ file.file_name }}</p>
                   <p class="text-xs text-gray-400">
                     <span v-if="loadingFiles[file.id]">Loading…</span>
-                    <span v-else-if="pageCounts[file.file_url] !== undefined">{{ pageCounts[file.file_url] }} pages</span>
+                    <span v-else-if="pageCountErrors[file.file_url]" class="text-red-400">Failed — click to retry ↻</span>
+                    <span v-else-if="pageCounts[file.file_url]">{{ pageCounts[file.file_url] }} pages</span>
                     <span v-else>PDF — click to expand</span>
                   </p>
                 </div>
@@ -196,6 +175,10 @@
               </div>
               <!-- Pages -->
               <div v-if="expandedFiles[file.id]" class="border-t p-2">
+                <div v-if="pageCountErrors[file.file_url]" class="text-xs text-red-400 text-center py-4 px-2">
+                  Could not load PDF pages. Click the header above to retry.
+                </div>
+                <template v-else>
                 <div class="flex justify-end pb-1.5" v-if="pageCounts[file.file_url]">
                   <button @click.stop="addAllPdfPages(file.file_url, pageCounts[file.file_url]!, file.file_name)"
                           class="text-xs text-[#81938A] hover:text-[#5f7068]">
@@ -239,6 +222,7 @@
                          :class="isPageSelected(file.file_url, n) ? 'text-teal-600 font-semibold' : 'text-gray-400'">p.{{ n }}</div>
                   </div>
                 </div>
+                </template><!-- /v-else (no error) -->
               </div>
             </div>
           </template>
@@ -269,7 +253,8 @@
                   <p class="text-xs font-medium text-gray-800 truncate">{{ file.file_name }}</p>
                   <p class="text-xs text-gray-400">
                     <span v-if="loadingFiles[file.id]">Loading…</span>
-                    <span v-else-if="pageCounts[file.file_url] !== undefined">{{ pageCounts[file.file_url] }} pages</span>
+                    <span v-else-if="pageCountErrors[file.file_url]" class="text-red-400">Failed — click to retry ↻</span>
+                    <span v-else-if="pageCounts[file.file_url]">{{ pageCounts[file.file_url] }} pages</span>
                     <span v-else>PDF — click to expand</span>
                   </p>
                 </div>
@@ -279,6 +264,10 @@
                 </svg>
               </div>
               <div v-if="expandedFiles[file.id]" class="border-t p-2">
+                <div v-if="pageCountErrors[file.file_url]" class="text-xs text-red-400 text-center py-4 px-2">
+                  Could not load PDF pages. Click the header above to retry.
+                </div>
+                <template v-else>
                 <div class="flex justify-end pb-1.5" v-if="pageCounts[file.file_url]">
                   <button @click.stop="addAllPdfPages(file.file_url, pageCounts[file.file_url]!, file.file_name, mat.doc_no)"
                           class="text-xs text-[#81938A] hover:text-[#5f7068]">
@@ -320,6 +309,7 @@
                          :class="isPageSelected(file.file_url, n) ? 'text-teal-600 font-semibold' : 'text-gray-400'">p.{{ n }}</div>
                   </div>
                 </div>
+                </template><!-- /v-else (no error) -->
               </div>
               </div><!-- /file card -->
             </div><!-- /material group -->
@@ -400,7 +390,8 @@
                       <p class="text-xs font-medium text-gray-800 truncate">{{ att.file_name }}</p>
                       <p class="text-xs text-gray-400">
                         <span v-if="loadingFiles[att.id]">Loading…</span>
-                        <span v-else-if="pageCounts[att.file_url] !== undefined">{{ pageCounts[att.file_url] }} pages</span>
+                        <span v-else-if="pageCountErrors[att.file_url]" class="text-red-400">Failed — click to retry ↻</span>
+                        <span v-else-if="pageCounts[att.file_url]">{{ pageCounts[att.file_url] }} pages</span>
                         <span v-else>PDF — click to expand</span>
                       </p>
                     </div>
@@ -410,6 +401,10 @@
                     </svg>
                   </div>
                   <div v-if="expandedFiles[att.id]" class="border-t p-2">
+                    <div v-if="pageCountErrors[att.file_url]" class="text-xs text-red-400 text-center py-4 px-2">
+                      Could not load PDF pages. Click the header above to retry.
+                    </div>
+                    <template v-else>
                     <div class="flex justify-end pb-1.5" v-if="pageCounts[att.file_url]">
                       <button @click.stop="addAllAttachmentPages(att.file_url, att.file_name, pageCounts[att.file_url]!)"
                               class="text-xs text-[#81938A] hover:text-[#5f7068]">
@@ -451,6 +446,7 @@
                              :class="isPageSelected(att.file_url, n) ? 'text-teal-600 font-semibold' : 'text-gray-400'">p.{{ n }}</div>
                       </div>
                     </div>
+                    </template><!-- /v-else (no error) -->
                   </div>
                 </div>
               </template>
@@ -468,10 +464,84 @@
 
         <!-- ── Selection list ────────────────────────────────────────── -->
         <div :style="{ width: panelMidW + 'px', minWidth: '160px', flexShrink: 0 }" class="bg-white border-r flex flex-col overflow-hidden">
-          <div class="h-10 px-3 flex items-center border-b bg-gray-50 shrink-0">
-            <span class="text-xs font-semibold text-gray-600 uppercase tracking-wider">
+          <div class="h-10 px-3 flex items-center gap-2 border-b bg-gray-50 shrink-0">
+            <span class="flex-1 text-xs font-semibold text-gray-600 uppercase tracking-wider">
               Report Pages ({{ selection.length }})
             </span>
+            <!-- ── Normal mode: Print All + Select ──────────────────── -->
+            <template v-if="selection.length > 0 && !printSelectMode">
+              <!-- Select-pages button: enters checkbox-select mode -->
+              <button
+                type="button"
+                title="Choose which pages to print"
+                class="flex items-center gap-1 px-2 py-1 text-xs rounded border border-gray-200 bg-white text-gray-500 hover:bg-gray-100 transition-colors shrink-0"
+                @click="enterPrintSelectMode"
+              >
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M9 12l2 2 4-4M7 4h10a2 2 0 012 2v12a2 2 0 01-2 2H7a2 2 0 01-2-2V6a2 2 0 012-2z"/>
+                </svg>
+                Select
+              </button>
+              <!-- Print All button -->
+              <button
+                type="button"
+                :disabled="printingAll"
+                class="flex items-center gap-1 px-2 py-1 text-xs rounded border border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 disabled:opacity-50 transition-colors shrink-0"
+                title="Open all pages joined together — scroll through & Ctrl+P to print"
+                @click="printAllPages()"
+              >
+                <svg v-if="printingAll" class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
+                </svg>
+                <svg v-else class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                </svg>
+                {{ printingAll ? '…' : 'Print All' }}
+              </button>
+            </template>
+
+            <!-- ── Select mode: all/none toggle + Print (N) + Cancel ─ -->
+            <template v-if="printSelectMode">
+              <!-- Select-all / deselect-all checkbox -->
+              <label class="flex items-center gap-1 text-xs text-gray-600 cursor-pointer shrink-0 select-none" title="Toggle all">
+                <input
+                  type="checkbox"
+                  class="rounded w-3.5 h-3.5 accent-blue-500 cursor-pointer"
+                  :checked="printSelectedCount === selection.length && selection.length > 0"
+                  :indeterminate="printSelectedCount > 0 && printSelectedCount < selection.length"
+                  @change="printSelectAllToggle"
+                />
+                All
+              </label>
+              <!-- Print selected button -->
+              <button
+                type="button"
+                :disabled="printingAll || printSelectedCount === 0"
+                class="flex items-center gap-1 px-2 py-1 text-xs rounded border border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 disabled:opacity-50 transition-colors shrink-0"
+                :title="`Print ${printSelectedCount} selected page${printSelectedCount === 1 ? '' : 's'}`"
+                @click="printAllPages(printSelectedIds); exitPrintSelectMode()"
+              >
+                <svg v-if="printingAll" class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
+                </svg>
+                <svg v-else class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                </svg>
+                {{ printingAll ? '…' : `Print (${printSelectedCount})` }}
+              </button>
+              <!-- Cancel select mode -->
+              <button
+                type="button"
+                class="flex items-center px-1.5 py-1 text-xs rounded border border-gray-200 bg-white text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors shrink-0"
+                title="Cancel selection"
+                @click="exitPrintSelectMode"
+              >✕</button>
+            </template>
           </div>
 
           <div class="flex-1 overflow-y-auto p-2 space-y-1">
@@ -483,6 +553,7 @@
             <div v-for="(item, idx) in selection" :key="item.id"
                  :class="[
                    'flex items-center gap-1.5 rounded-lg px-2 py-1.5 transition-colors',
+                   printSelectMode && !printSelectedIds.has(item.id) ? 'opacity-40' :
                    dragSrcIdx === idx
                      ? 'opacity-40'
                      : dragOverIdx === idx
@@ -508,9 +579,20 @@
                  @dragover="onDragOver($event, idx)"
                  @drop="onDrop($event, idx)"
                  @dragend="onDragEnd"
-                 @click="photoSlotsMap[item.id] != null ? activatePhotoItem(item.id) : undefined">
-              <!-- Drag handle -->
-              <span class="text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing shrink-0 select-none"
+                 @click="printSelectMode
+                   ? togglePrintItem(item.id)
+                   : photoSlotsMap[item.id] != null ? activatePhotoItem(item.id) : undefined">
+              <!-- Print-select checkbox (select mode only) -->
+              <input
+                v-if="printSelectMode"
+                type="checkbox"
+                class="rounded w-3.5 h-3.5 accent-blue-500 cursor-pointer shrink-0"
+                :checked="printSelectedIds.has(item.id)"
+                @click.stop="togglePrintItem(item.id)"
+              />
+              <!-- Drag handle (hidden in select mode to keep row compact) -->
+              <span v-if="!printSelectMode"
+                    class="text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing shrink-0 select-none"
                     title="Drag to reorder">
                 <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
                   <circle cx="9"  cy="5"  r="1.5"/><circle cx="15" cy="5"  r="1.5"/>
@@ -969,7 +1051,6 @@ import { useItrTypeStore }      from '@/stores/itrTypeStore'
 import { useItpChecklistStore } from '@/stores/itpChecklistStore'
 import { useItrReportPagesStore, type SavedPickerItem, type ReportPageConfig } from '@/stores/itrReportPagesStore'
 import { getPageCount, renderPageToDataUrl, renderPageToHtml } from '@/utils/pdfRenderer'
-import type { ReportPage }      from '@/components/ITRReportModal.vue'
 import { useItrStore, type ITR, type ItrAttachment } from '@/stores/itrStore'
 
 // ─── Lazy thumbnail IntersectionObserver directive ────────────────────────────
@@ -1040,9 +1121,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  close:       []
-  generate:    [pages: ReportPage[]]
-  viewReport:  []   // return to already-generated draft without rebuilding
+  close: []
 }>()
 
 // ─── Stores ───────────────────────────────────────────────────────────────────
@@ -1059,13 +1138,11 @@ const itrStore           = useItrStore()
 const activeTab       = ref<SourceTab>('forms')
 const activeAttachTab = ref<AttachSubTab>('drawing')
 const selection       = ref<PickerItem[]>([])
-const generating        = ref(false)
-const hasGeneratedPages = ref(false)
-
 // PDF expansion / loading
 const expandedFiles = ref<Record<string, boolean>>({})
 const loadingFiles  = ref<Record<string, boolean>>({})
-const pageCounts    = ref<Record<string, number>>({})      // file_url → page count
+const pageCounts      = ref<Record<string, number>>({})      // file_url → page count
+const pageCountErrors = ref<Record<string, boolean>>({})     // file_url → failed flag
 const thumbs        = ref<Record<string, string>>({})      // `${url}:${n}` → data URL
 
 // Photo slots: per-item map — each photo_report page gets its own 8 slots and 4 captions
@@ -1574,11 +1651,22 @@ async function openFormPreview(item: PickerItem) {
   const instanceId = item.formCode === 'itr_cover' ? '' : item.id
   const fdKey      = instanceId ? `${item.formCode}__${instanceId}` : (item.formCode ?? '')
   // Fall back to the plain formCode key for data saved before the per-instance fix
-  const savedDb = (props.itr.form_data?.[fdKey] ?? props.itr.form_data?.[item.formCode ?? ''] ?? {}) as Record<string, unknown>
+  let savedDb = (props.itr.form_data?.[fdKey] ?? props.itr.form_data?.[item.formCode ?? ''] ?? {}) as Record<string, unknown>
   // Inject photo cells before processing form fields, same as doGenerate does
   if (item.formCode === 'photo_report') {
     const slots = photoSlotsMap.value[item.id] ?? Array(8).fill(null)
     html = injectPhotoCells(html, slots)
+  } else {
+    const checklistSlots = photoSlotsMap.value[item.id]
+    if (checklistSlots) html = injectPhotoCells(html, checklistSlots)
+  }
+  // Auto-inject page-current / page-total for all html_form types
+  const sameFormItems = selection.value.filter(i => i.type === 'html_form' && i.formCode === item.formCode)
+  const previewPageNum = sameFormItems.findIndex(i => i.id === item.id) + 1
+  savedDb = {
+    ...savedDb,
+    'page-current': String(previewPageNum > 0 ? previewPageNum : 1),
+    'page-total':   String(sameFormItems.length > 0 ? sameFormItems.length : 1),
   }
   const processed = processHtmlForm(html, {}, savedDb, item.formCode ?? '', instanceId)
   // When the form is opened as a new tab, window.parent === window (not the Vue app).
@@ -1629,22 +1717,24 @@ async function togglePdfFile(fileId: string, fileUrl: string) {
   }
   expandedFiles.value[fileId] = true
 
-  if (pageCounts.value[fileUrl] !== undefined) return   // already loaded
+  // Already successfully loaded — don't re-fetch.
+  // Note: do NOT skip on error (pageCountErrors set) — allow user to retry by re-expanding.
+  if ((pageCounts.value[fileUrl] ?? 0) > 0) return
+
+  // Clear previous error state before retrying
+  delete pageCountErrors.value[fileUrl]
 
   loadingFiles.value[fileId] = true
-  let count = 0
   try {
-    count = await getPageCount(fileUrl)
+    const count = await getPageCount(fileUrl)
     pageCounts.value[fileUrl] = count
   } catch (err) {
     console.error('[ITRReportPicker] PDF load error:', err)
-    pageCounts.value[fileUrl] = 0
+    pageCountErrors.value[fileUrl] = true
+    delete pageCounts.value[fileUrl]
+  } finally {
     delete loadingFiles.value[fileId]
-    return
   }
-
-  // Page count fetched — tiles render lazily via IntersectionObserver as they scroll into view.
-  delete loadingFiles.value[fileId]
 }
 
 
@@ -2037,93 +2127,337 @@ function wrapImageInA4(url: string, title: string): string {
 </html>`
 }
 
-// ─── Generate ─────────────────────────────────────────────────────────────────
+// ─── Print All ────────────────────────────────────────────────────────────────
+// Opens a new browser tab showing every selected page joined together as A4
+// cards, with a sticky toolbar and a "Print All" button (Ctrl+P works too).
+// HTML form pages run inside srcdoc iframes so each form's scripts execute in
+// full isolation — dynamic rows, repagination, etc. all work correctly.
+// PDF / image pages are rendered as high-res <img> elements.
 
-async function doGenerate() {
-  if (selection.value.length === 0 || generating.value) return
-  generating.value = true
+const printingAll       = ref(false)
+const printSelectMode   = ref(false)
+const printSelectedIds  = ref(new Set<string>())
+const printSelectedCount = computed(() => printSelectedIds.value.size)
 
+function enterPrintSelectMode() {
+  // Pre-select everything so the user can deselect rather than build from scratch
+  printSelectedIds.value = new Set(selection.value.map(i => i.id))
+  printSelectMode.value  = true
+}
+function exitPrintSelectMode() {
+  printSelectMode.value = false
+}
+function togglePrintItem(id: string) {
+  const s = new Set(printSelectedIds.value)
+  if (s.has(id)) s.delete(id)
+  else s.add(id)
+  printSelectedIds.value = s
+}
+function printSelectAllToggle() {
+  printSelectedIds.value = printSelectedIds.value.size === selection.value.length
+    ? new Set()
+    : new Set(selection.value.map(i => i.id))
+}
+
+async function printAllPages(ids?: Set<string>) {
+  const toPrint = ids ? selection.value.filter(i => ids.has(i.id)) : selection.value
+  if (toPrint.length === 0 || printingAll.value) return
+  printingAll.value = true
   try {
-    // Always fetch the latest form_data from DB before building pages so that
-    // checklist / mat_receive / photo data saved in the preview is included.
     await itrStore.refreshFormData(props.itr.id)
-    // Read from the store after refresh — props.itr is a snapshot and may still
-    // hold the stale form_data object even after the store has been updated.
     const liveItr = itrStore.itrs.find(i => i.id === props.itr.id) ?? props.itr
 
-    const pages: ReportPage[] = []
+    interface PrintPart {
+      formHtml?: string        // complete processed HTML for html_form pages
+      dataUrl?:  string        // rendered page for pdf_page pages
+      imgUrl?:   string        // direct URL for image pages
+      label:     string
+      isLandscape: boolean
+    }
+    const parts: PrintPart[] = []
 
-    for (const item of selection.value) {
+    // Pre-compute page-current/page-total for ALL html_form items, grouped by formCode
+    const formCodeGroupsPrint = new Map<string, typeof toPrint[number][]>()
+    for (const it of toPrint) {
+      if (it.type === 'html_form' && it.formCode) {
+        const grp = formCodeGroupsPrint.get(it.formCode) ?? []
+        grp.push(it)
+        formCodeGroupsPrint.set(it.formCode, grp)
+      }
+    }
+    const formPageIndexMapPrint = new Map(
+      [...formCodeGroupsPrint.values()].flatMap(grp =>
+        grp.map((it, idx) => [it.id, { current: idx + 1, total: grp.length }] as [string, { current: number; total: number }])
+      )
+    )
+
+    for (const item of toPrint) {
       if (item.type === 'html_form' && item.formCode) {
         let html: string | null = null
-
-        if (item.formCode === 'itr_cover') {
-          html = coverRev.value?.html_content ?? null
-        } else if (item.formCode === 'photo_report') {
-          html = photoRev.value?.html_content ?? null
-        } else if (item.formCode === 'mat_receive') {
-          html = matReceiveRev.value?.html_content ?? null
-        } else {
-          html = availableChecklists.value.find(c => c.id === item.formCode)?.html_content ?? null
-        }
-
+        if (item.formCode === 'itr_cover')         html = coverRev.value?.html_content ?? null
+        else if (item.formCode === 'photo_report') html = photoRev.value?.html_content ?? null
+        else if (item.formCode === 'mat_receive')  html = matReceiveRev.value?.html_content ?? null
+        else html = availableChecklists.value.find(c => c.id === item.formCode)?.html_content ?? null
         if (!html) continue
 
         if (item.formCode === 'photo_report') {
-          // 1. Inject assigned images into .photo-cell divs (per-page slots)
           const slots = photoSlotsMap.value[item.id] ?? Array(8).fill(null)
           html = injectPhotoCells(html, slots)
-          // 2. desc-1…desc-4 are written to itr.form_data by setPhotoDesc, so they
-          //    will already be present in savedRaw2 after the refresh above.
-          //    As a safety fallback, also merge from photoDescsMap (in case the user
-          //    typed and clicked Generate before the 600ms debounce fired).
-          const fdKey2   = `photo_report__${item.id}`
-          const savedRaw2Base = (liveItr.form_data?.[fdKey2] ?? liveItr.form_data?.['photo_report'] ?? {}) as Record<string, unknown>
-          const descs = photoDescsMap.value[item.id] ?? []
+          const fdKey         = `photo_report__${item.id}`
+          const savedRawBase  = (liveItr.form_data?.[fdKey] ?? liveItr.form_data?.['photo_report'] ?? {}) as Record<string, unknown>
+          const descs         = photoDescsMap.value[item.id] ?? []
           const descFallback: Record<string, string> = {}
           for (let d = 0; d < 4; d++) {
-            if (descs[d] && !savedRaw2Base[`desc-${d + 1}`]) descFallback[`desc-${d + 1}`] = descs[d]
+            if (descs[d] && !savedRawBase[`desc-${d + 1}`]) descFallback[`desc-${d + 1}`] = descs[d]
           }
-          const savedRaw2 = { ...savedRaw2Base, ...descFallback }
-          const pageSize2 = parsePageSizeMm(html)
-          pages.push({ title: item.label, html: processHtmlForm(html, {}, savedRaw2, item.formCode, item.id), formCode: fdKey2, ...pageSize2 })
+          const pageInfoPrint = formPageIndexMapPrint.get(item.id) ?? { current: 1, total: 1 }
+          html = processHtmlForm(html, {}, {
+            ...savedRawBase,
+            ...descFallback,
+            'page-current': String(pageInfoPrint.current),
+            'page-total':   String(pageInfoPrint.total),
+          }, item.formCode, item.id)
         } else if (item.formCode === 'mat_receive') {
-          const fdKeyM   = `mat_receive__${item.id}`
-          const savedRawM = (liveItr.form_data?.[fdKeyM] ?? liveItr.form_data?.['mat_receive'] ?? {}) as Record<string, unknown>
-          const pageSizeM = parsePageSizeMm(html)
-          pages.push({ title: item.label, html: processHtmlForm(html, {}, savedRawM, item.formCode, item.id), formCode: fdKeyM, ...pageSizeM })
+          const fdKey    = `mat_receive__${item.id}`
+          const savedRaw = (liveItr.form_data?.[fdKey] ?? liveItr.form_data?.['mat_receive'] ?? {}) as Record<string, unknown>
+          const pageInfoMatPrint = formPageIndexMapPrint.get(item.id) ?? { current: 1, total: 1 }
+          html = processHtmlForm(html, {}, { ...savedRaw, 'page-current': String(pageInfoMatPrint.current), 'page-total': String(pageInfoMatPrint.total) }, item.formCode, item.id)
         } else {
-          // Checklist — inject photo-cell images if this checklist page has slots assigned
           const checklistSlots = photoSlotsMap.value[item.id]
-          if (checklistSlots) {
-            html = injectPhotoCells(html, checklistSlots)
-          }
-          // Per-instance key so page 2 never overwrites page 1
-          const fdKeyC   = `${item.formCode}__${item.id}`
-          const savedRaw = (liveItr.form_data?.[fdKeyC] ?? liveItr.form_data?.[item.formCode] ?? {}) as Record<string, unknown>
-          const pageSizeC = parsePageSizeMm(html)
-          pages.push({ title: item.label, html: processHtmlForm(html, {}, savedRaw, item.formCode, item.id), formCode: fdKeyC, ...pageSizeC })
+          if (checklistSlots) html = injectPhotoCells(html, checklistSlots)
+          const fdKey    = `${item.formCode}__${item.id}`
+          const savedRaw = (liveItr.form_data?.[fdKey] ?? liveItr.form_data?.[item.formCode] ?? {}) as Record<string, unknown>
+          const pageInfoChkPrint = formPageIndexMapPrint.get(item.id) ?? { current: 1, total: 1 }
+          html = processHtmlForm(html, {}, { ...savedRaw, 'page-current': String(pageInfoChkPrint.current), 'page-total': String(pageInfoChkPrint.total) }, item.formCode, item.id)
         }
 
+        const pageSize   = parsePageSizeMm(html)
+        const isLandscapeForm = (pageSize?.widthMm ?? 210) > (pageSize?.heightMm ?? 297)
+        parts.push({ formHtml: html, label: item.label, isLandscape: isLandscapeForm })
+
       } else if (item.type === 'pdf_page' && item.fileUrl && item.pageNum !== undefined) {
-        const { html, widthMm, heightMm, pdfSourceUrl, pdfSourcePage } = await renderPageToHtml(item.fileUrl, item.pageNum, item.label)
-        pages.push({ title: item.label, html, widthMm, heightMm, pdfSourceUrl, pdfSourcePage })
+        // Use renderPageToHtml (same as doGenerate) so we reuse any cached pdf.js document.
+        // If the PDF is not in the document cache and CORS blocks a fresh fetch, fall back
+        // to the cached thumbnail data URL so Print All never crashes.
+        const cacheKey = `${item.fileUrl}:${item.pageNum}`
+        const cachedHiRes = pageViewerHiResCache.get(cacheKey)
+        if (cachedHiRes) {
+          parts.push({ dataUrl: cachedHiRes, label: item.label, isLandscape: false })
+        } else {
+          try {
+            const { html, widthMm, heightMm } = await renderPageToHtml(item.fileUrl, item.pageNum, item.label)
+            const isL = (widthMm ?? 210) > (heightMm ?? 297)
+            parts.push({ formHtml: html, label: item.label, isLandscape: isL })
+          } catch (_renderErr) {
+            // CORS or network failure — degrade gracefully to cached thumbnail or skip
+            const thumb = thumbs.value[cacheKey]
+            if (thumb) {
+              parts.push({ dataUrl: thumb, label: item.label, isLandscape: false })
+            } else {
+              console.warn('[printAllPages] Skipping PDF page (render failed, no thumbnail):', item.label)
+            }
+          }
+        }
 
       } else if (item.type === 'image' && item.attachmentUrl) {
-        pages.push({ title: item.label, html: wrapImageInA4(item.attachmentUrl, item.label) })
+        parts.push({ imgUrl: item.attachmentUrl, label: item.label, isLandscape: false })
       }
     }
 
-    // Save config before emitting so the selection is persisted even if the modal closes
-    await reportPagesStore.saveConfig(props.itr.id, buildConfig())
-    hasGeneratedPages.value = true
-    emit('generate', pages)
+    if (parts.length === 0) return
+
+    // Build page wrapper HTML for each part
+    const pageWrappers = parts.map((p, i) => {
+      const orientClass = p.isLandscape ? 'landscape' : 'portrait'
+      if (p.formHtml) {
+        // Detect the form's @page margin and classify the form type:
+        //
+        //  • Checklist-style (non-zero @page margin, e.g. "12mm 10mm" on E-002):
+        //      Standalone print: @page provides margin whitespace; .a4-container uses
+        //      width:100%; height:auto; padding:0 (checklist's own @media print rule).
+        //      In Print-All: the outer @page{margin:0} suppresses it.  We restore
+        //      the whitespace by giving .a4-container the equivalent padding and setting
+        //      height:auto so content can flow naturally.
+        //
+        //  • Fixed-height style (@page margin:0, e.g. Photo Report, GN-02):
+        //      Standalone print: .a4-container has an explicit pixel/mm height (297mm /
+        //      210mm) and a nested flex chain that depends on that height.
+        //      In Print-All: the outer @page margin is already 0 — so nothing changes
+        //      for the @page side.  We must NOT override height:auto or the flex chain
+        //      collapses (.photos-container { flex:1 1 0; min-height:0 } → 0 px).
+        //      Only strip the box-shadow.
+        function extractPrintInfo(html: string): { margin: string; hasPageMargin: boolean } {
+          const pm = html.match(/@page\s*[^{]*\{[^}]*\bmargin\s*:\s*([^;}\r\n]+)/s)
+          if (pm) {
+            const v = pm[1].trim()
+            const isZero = !v || /^0(mm|px|pt|cm|em|rem|%|vw|vh)?\s*(0(mm|px|pt|cm|em|rem|%|vw|vh)?)?$/.test(v)
+            if (!isZero) return { margin: v, hasPageMargin: true }
+          }
+          // @page margin is zero or absent — use the container's own screen padding
+          const cp = html.match(/\.a4-container\s*\{[^}]*\bpadding\s*:\s*([^;}\r\n]+)/s)
+          const fallback = (cp?.[1]?.trim() && !/^0/.test(cp[1].trim())) ? cp[1].trim() : '7mm 10mm'
+          return { margin: fallback, hasPageMargin: false }
+        }
+        const { margin: printMargin, hasPageMargin } = extractPrintInfo(p.formHtml)
+
+        // @media print override for .a4-container, differentiated by form type.
+        // Checklist: restore margin via padding + let content flow (height:auto).
+        // Fixed-height (Photo/GN-02): only remove shadow; keep height & overflow intact
+        // so the internal flex chain resolves correctly.
+        const printContainerCSS = hasPageMargin
+          ? `box-shadow:none!important;width:100%!important;height:auto!important;max-height:none!important;overflow:visible!important;padding:${printMargin}!important;`
+          : `box-shadow:none!important;`
+
+        // Inject a body-normalizer style so the form renders cleanly inside the
+        // fixed-size srcdoc iframe (no gray background strips, no extra margin).
+        const normalized = p.formHtml.replace(
+          '</head>',
+          `<style>
+/* Print-All iframe body normalizer */
+html, body {
+  background: #fff !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  min-width: 0 !important;
+}
+.a4-container {
+  box-shadow: none !important;
+  margin: 0 auto !important;
+}
+@media print {
+  html, body {
+    background: #fff !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  .a4-container { ${printContainerCSS} }
+}
+</style></head>`
+        )
+        // Properly encode the HTML string for the srcdoc attribute.
+        // Only & and " need encoding; base64 SRC data is safe since it uses A-Z a-z 0-9 + / =
+        const encoded = normalized
+          .replace(/&/g, '&amp;')
+          .replace(/"/g, '&quot;')
+        return `<div class="page-wrapper ${orientClass}" id="pw-${i}"><iframe srcdoc="${encoded}" sandbox="allow-scripts allow-same-origin allow-modals" title="${p.label.replace(/[<>"]/g, '')}"></iframe></div>`
+      }
+      const src     = p.dataUrl ?? p.imgUrl ?? ''
+      const altText = p.label.replace(/[<>"]/g, '')
+      return `<div class="page-wrapper ${orientClass}" id="pw-${i}"><div class="img-page"><img src="${src}" alt="${altText}"/></div></div>`
+    }).join('\n')
+
+    const safeTitle = (props.itr as any).title?.replace(/[<>"&]/g, '') ?? 'Report'
+
+    const combinedHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Print All — ${safeTitle}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ── Screen layout ────────────────────────────────── */
+    body {
+      background: #525659;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+    .print-toolbar {
+      position: sticky;
+      top: 10px;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(0,0,0,0.72);
+      color: #fff;
+      padding: 8px 16px;
+      border-radius: 20px;
+      backdrop-filter: blur(4px);
+      box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+    }
+    .print-toolbar span { font-size: 13px; color: rgba(255,255,255,0.75); }
+    .print-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 16px;
+      background: #059669;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .print-btn:hover { background: #047857; }
+    .page-wrapper {
+      background: #fff;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.45);
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    .page-wrapper.landscape { width: 297mm; height: 210mm; }
+    .page-wrapper.portrait  { width: 210mm; height: 297mm; }
+    iframe { width: 100%; height: 100%; border: none; display: block; }
+    .img-page {
+      width: 100%; height: 100%;
+      display: flex; align-items: center; justify-content: center;
+      background: #fff; padding: 8mm;
+    }
+    .img-page img { max-width: 100%; max-height: 100%; object-fit: contain; display: block; }
+
+    /* ── Print layout ─────────────────────────────────── */
+    @media print {
+      body { background: white; padding: 0; gap: 0; display: block; }
+      .print-toolbar { display: none !important; }
+      .page-wrapper {
+        box-shadow: none;
+        overflow: hidden;
+        margin: 0;
+        break-after: page;
+        page-break-after: always;
+      }
+      .page-wrapper:last-child { break-after: auto; page-break-after: auto; }
+      .page-wrapper.landscape { page: landscape-page; width: 297mm; height: 210mm; }
+      .page-wrapper.portrait  { page: portrait-page;  width: 210mm; height: 297mm; }
+      @page landscape-page { size: A4 landscape; margin: 0; }
+      @page portrait-page  { size: A4 portrait;  margin: 0; }
+      @page { margin: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="print-toolbar">
+    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+    </svg>
+    <span>${parts.length} page${parts.length !== 1 ? 's' : ''} &nbsp;·&nbsp; Ctrl+P to print all</span>
+    <button class="print-btn" onclick="window.print()">&#128424; Print All</button>
+  </div>
+${pageWrappers}
+</body>
+</html>`
+
+    const w = window.open('', '_blank')
+    if (w) {
+      w.document.open()
+      w.document.write(combinedHtml)
+      w.document.close()
+    }
   } catch (err) {
-    console.error('[ITRReportPicker] generate error:', err)
+    console.error('[ITRReportPicker] printAllPages error:', err)
   } finally {
-    generating.value = false
+    printingAll.value = false
   }
 }
+
 
 // ─── Save / restore config ───────────────────────────────────────────────────
 

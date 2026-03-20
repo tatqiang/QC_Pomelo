@@ -13,11 +13,34 @@ export interface ItrComment {
 }
 
 export const useItrCommentStore = defineStore('itrComments', () => {
-  const comments  = ref<ItrComment[]>([])
-  const loading   = ref(false)
+  const comments      = ref<ItrComment[]>([])
+  const loading       = ref(false)
+  /** Map of itr_id → comment count for the ITR table view */
+  const commentCounts     = ref<Record<string, number>>({})
+  /** Map of itr_id → latest comment body for the ITR table view */
+  const lastCommentBodies = ref<Record<string, string>>({})
 
   let channel: RealtimeChannel | null = null
   let subscribedItrId: string | null  = null
+
+  async function fetchCountsForItrs(itrIds: string[]): Promise<void> {
+    if (!itrIds.length) return
+    const { data, error } = await supabase
+      .from('itr_comments')
+      .select('itr_id, body, created_at')
+      .in('itr_id', itrIds)
+      .order('created_at', { ascending: false })
+    if (error) { console.error('[itrComments] fetchCounts error:', error); return }
+    const counts: Record<string, number> = {}
+    const bodies: Record<string, string> = {}
+    for (const row of (data ?? []) as { itr_id: string; body: string }[]) {
+      counts[row.itr_id] = (counts[row.itr_id] ?? 0) + 1
+      // ordered desc — first occurrence per itr_id is the latest
+      if (!bodies[row.itr_id]) bodies[row.itr_id] = row.body
+    }
+    commentCounts.value     = counts
+    lastCommentBodies.value = bodies
+  }
 
   async function fetchComments(itrId: string) {
     loading.value = true
@@ -47,13 +70,22 @@ export const useItrCommentStore = defineStore('itrComments', () => {
       .single()
     if (!error && data && !comments.value.find(c => c.id === (data as ItrComment).id)) {
       comments.value.push(data as ItrComment)
+      commentCounts.value[itrId] = (commentCounts.value[itrId] ?? 0) + 1
+      lastCommentBodies.value[itrId] = (data as ItrComment).body
     }
     return { error }
   }
 
   async function deleteComment(id: string) {
+    const target = comments.value.find(c => c.id === id)
     const { error } = await supabase.from('itr_comments').delete().eq('id', id)
-    if (!error) comments.value = comments.value.filter(c => c.id !== id)
+    if (!error) {
+      comments.value = comments.value.filter(c => c.id !== id)
+      if (target) {
+        const cur = commentCounts.value[target.itr_id] ?? 0
+        commentCounts.value[target.itr_id] = Math.max(0, cur - 1)
+      }
+    }
     return { error }
   }
 
@@ -91,5 +123,5 @@ export const useItrCommentStore = defineStore('itrComments', () => {
     }
   }
 
-  return { comments, loading, fetchComments, addComment, deleteComment, subscribe, unsubscribe }
+  return { comments, commentCounts, lastCommentBodies, loading, fetchComments, fetchCountsForItrs, addComment, deleteComment, subscribe, unsubscribe }
 })

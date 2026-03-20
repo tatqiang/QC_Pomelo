@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <!-- Modal backdrop -->
   <div
     v-if="isOpen"
@@ -1523,8 +1523,6 @@
       :checklist-ids="draftChecklistIds"
       :itr-snapshots="itrSnapshots"
       @close="showReportPicker = false"
-      @generate="onPickerGenerate"
-      @view-report="showReportPicker = false; showReportModal = true"
     />
   </Teleport>
 
@@ -1564,7 +1562,6 @@ import AttachmentList from '@/components/itr/AttachmentList.vue'
 import FileUploadArea from '@/components/itr/FileUploadArea.vue'
 import DateTimePicker from '@/components/DateTimePicker.vue'
 import PDFFormViewer from '@/components/PDFFormViewer.vue'
-import ITRReportModal, { type ReportPage } from '@/components/ITRReportModal.vue'
 import ITRReportPicker from '@/components/ITRReportPicker.vue'
 import ITRComments from '@/components/ITRComments.vue'
 
@@ -1582,6 +1579,7 @@ function dtSet(val: string, part: 'date' | 'time', newVal: string) {
 const props = defineProps<{
   modelValue: boolean
   itr: ITR | null        // null = create new
+  autoOpenComments?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -1611,9 +1609,7 @@ const itrChecklistSelectionStore = useItrChecklistSelectionStore()
 const itrSnapshots = ref<Record<string, ItrFormSnapshot>>({})
 
 // ── Report viewer state ─────────────────────────────────────────────────────
-const showReportModal  = ref(false)
 const showReportPicker = ref(false)
-const reportPages      = ref<ReportPage[]>([])
 const pickerDataMap    = ref<Record<string, string>>({})
 
 // ── Comments panel ───────────────────────────────────────────────────────────────
@@ -1920,7 +1916,7 @@ watch(() => draftForm.task_id, (taskId) => {
 // Load dependent data when dialog opens
 watch(() => props.modelValue, async (open) => {
   if (!open) return
-  showComments.value = false
+  showComments.value = props.autoOpenComments ?? false
   editMode.value = false // always open in view mode
   const pid = projectStore.activeProject?.id
   if (!pid) return
@@ -2941,224 +2937,4 @@ function openReportPicker() {
   showReportPicker.value = true
 }
 
-/** Called when picker finishes building pages → open the page manager */
-function onPickerGenerate(pages: ReportPage[]) {
-  reportPages.value     = pages
-  showReportPicker.value = false
-  showReportModal.value  = true
-}
-
-/**
- * Replace the JSON seed data inside the processHtmlForm-injected head script.
- * This ensures navigating away and back to a page always shows fresh data
- * because the srcdoc re-seeds localStorage from the baked-in JSON on every load.
- */
-function rebuildPageHtmlSeed(html: string, newData: Record<string, unknown>): string {
-  // ── 1. Update window.__INJECT_DATA__ JSON seed in the head <script> ────────
-  // Used by the Puppeteer export path and the iframe runtime inject() script.
-  const markerIdx = html.indexOf('window.__FORM_CODE__')
-  if (markerIdx !== -1) {
-    const prefix = 'JSON.stringify('
-    const startIdx = html.indexOf(prefix, markerIdx)
-    if (startIdx !== -1) {
-      const openParenPos = startIdx + prefix.length - 1
-      let depth = 0
-      let closePos = -1
-      for (let i = openParenPos; i < html.length; i++) {
-        const ch = html[i]
-        if (ch === '(') { depth++; continue }
-        if (ch === ')') { depth--; if (depth === 0) { closePos = i; break }; continue }
-        if (ch === '"' || ch === "'") {
-          const q = ch; i++
-          while (i < html.length) {
-            if (html[i] === '\\') { i += 2; continue }
-            if (html[i] === q) break
-            i++
-          }
-        }
-      }
-      if (closePos !== -1) {
-        html = html.slice(0, openParenPos + 1) + JSON.stringify(newData) + html.slice(closePos)
-      }
-    }
-  }
-
-  // ── 2. Bake [data-sigkey] img src attributes into the static HTML ──────────
-  // The canvas/screenshot export path (prepareHtmlForPdf) strips all <script>
-  // tags and renders purely from static HTML attributes + CSS.  If the img src
-  // is empty the signature won't appear even though __INJECT_DATA__ is correct.
-  // ── 3. Rebuild free-placed sig boxes (.placed-sig-box) ──────────────────────
-  // Same reason: placed boxes are dynamic DOM; bake them as static elements so
-  // canvas capture and Puppeteer both see them without js execution.
-  const parser = new DOMParser()
-  const doc = parser.parseFromString(html, 'text/html')
-
-  doc.querySelectorAll<HTMLElement>('[data-sigkey]').forEach(el => {
-    const sigKey = el.dataset.sigkey ?? ''
-    const sigData = newData[sigKey]
-    const img = el.querySelector<HTMLImageElement>('img.sig-preview')
-    if (!img) return
-    if (sigData && typeof sigData === 'string' && sigData.startsWith('data:')) {
-      img.setAttribute('src', sigData)
-      img.classList.add('has-sig')
-      img.style.display = 'block'
-    } else {
-      img.removeAttribute('src')
-      img.classList.remove('has-sig')
-      img.style.removeProperty('display')
-    }
-  })
-
-  const container = doc.querySelector<HTMLElement>('.a4-container')
-  if (container) {
-    container.querySelectorAll('.placed-sig-box').forEach(el => el.remove())
-    const rawBoxes = newData['sig-boxes']
-    if (Array.isArray(rawBoxes)) {
-      rawBoxes.forEach((rec: unknown) => {
-        if (!rec || typeof rec !== 'object') return
-        const r = rec as { key?: string; x?: number; y?: number; w?: number; h?: number; date?: string }
-        const boxSigData = (newData[r.key ?? ''] ?? '') as string
-        const boxEl = doc.createElement('div')
-        boxEl.style.cssText = [
-          'position:absolute',
-          `left:${r.x ?? 0}px`, `top:${r.y ?? 0}px`,
-          `width:${r.w ?? 140}px`, `height:${r.h ?? 55}px`,
-          'border:none', 'background:none', 'z-index:20', 'pointer-events:none',
-        ].join(';')
-        if (boxSigData.startsWith('data:')) {
-          const imgEl = doc.createElement('img')
-          imgEl.src = boxSigData
-          imgEl.style.cssText = 'width:100%;height:100%;object-fit:contain;object-position:bottom center;display:block;'
-          boxEl.appendChild(imgEl)
-        }
-        if (r.date) {
-          const dateEl = doc.createElement('div')
-          dateEl.style.cssText = 'position:absolute;top:100%;left:50%;transform:translateX(-50%);text-align:center;font-size:11px;white-space:nowrap;'
-          dateEl.textContent = r.date
-          boxEl.appendChild(dateEl)
-        }
-        container.appendChild(boxEl)
-      })
-    }
-  }
-
-  return '<!DOCTYPE html>' + doc.documentElement.outerHTML
-}
-
-/** Called when user saves edits to an HTML form in the report viewer → persist to DB */
-async function onReportSave(formCode: string, data: Record<string, unknown>) {
-  if (!liveItr.value) return
-  const newFormData = {
-    ...(liveItr.value.form_data ?? {}),
-    [formCode]: data,
-  }
-  const ok = await itrStore.updateITR(liveItr.value.id, { form_data: newFormData })
-  if (ok) {
-    showSnack('Form data saved')
-    // Update the baked-in seed data in the page HTML so navigating away and back
-    // to this page re-loads with the saved data (not the original DB snapshot).
-    const pageIdx = reportPages.value.findIndex(p => p.formCode === formCode)
-    if (pageIdx >= 0) {
-      reportPages.value[pageIdx] = {
-        ...reportPages.value[pageIdx],
-        html: rebuildPageHtmlSeed(reportPages.value[pageIdx].html, data),
-      }
-    }
-  } else {
-    showSnack(itrStore.error ?? 'Save failed', 'error')
-  }
-}
-
-const generateHtmlReport = async () => {
-  if (!liveItr.value) return
-  const itr = liveItr.value
-
-  // Build data-key injection map (reuses shared helper)
-  const dataMap = buildDataMap(itr)
-
-  // Collect HTML sections: Cover → Photo Report → checklists (in selection order)
-  const rawSections: Array<{ html: string; title: string }> = []
-  const coverRev = getRevisionForReport('itr_cover')
-  const photoRev = getRevisionForReport('photo_report')
-  if (coverRev?.html_content) rawSections.push({ html: coverRev.html_content, title: 'ITR Cover' })
-  if (photoRev?.html_content) rawSections.push({ html: photoRev.html_content, title: 'Photo Report' })
-  for (const cid of draftChecklistIds.value) {
-    const c = checklistById(cid)
-    if (c?.html_content) rawSections.push({ html: c.html_content, title: c.title })
-  }
-
-  if (rawSections.length === 0) {
-    showSnack('No HTML templates found. Upload HTML revisions in Master Forms.', 'warning')
-    return
-  }
-
-  // Parse each section and inject data-key values; produce per-page standalone HTML
-  const parser = new DOMParser()
-  const pages: ReportPage[] = rawSections.map(section => {
-    const doc = parser.parseFromString(section.html, 'text/html')
-
-    // Inject known field values into data-key inputs via HTML attribute
-    doc.querySelectorAll<HTMLInputElement>('[data-key]').forEach(el => {
-      const key = el.dataset.key ?? ''
-      if (key in dataMap) {
-        el.setAttribute('value', dataMap[key])
-      }
-    })
-
-    // Append an override script at end of body so it fires AFTER the form's own
-    // DOMContentLoaded (which calls loadData() from localStorage and would overwrite
-    // our injected attribute values). This script:
-    //  1. Clears any stale localStorage keys used by the form
-    //  2. Re-asserts our values on DOMContentLoaded and on window.load
-    const filteredMap: Record<string, string> = {}
-    doc.querySelectorAll<HTMLInputElement>('[data-key]').forEach(el => {
-      const key = el.dataset.key ?? ''
-      if (key in dataMap) filteredMap[key] = dataMap[key]
-    })
-    const overrideScript = doc.createElement('script')
-    overrideScript.textContent = [
-      ';(function(){',
-      `  var DATA=${JSON.stringify(filteredMap)};`,
-      '  function inject(){',
-      '    Object.keys(DATA).forEach(function(k){',
-      '      var el=document.querySelector(\'[data-key="\'+k+\'"]\');',
-      '      if(el && el.type!=="checkbox") el.value=DATA[k];',
-      '    });',
-      '  }',
-      // Clear stale localStorage so the form's loadData() has nothing to restore
-      '  try{',
-      '    Object.keys(localStorage).forEach(function(k){',
-      '      if(/^ITR_|^Photo_|^Checklist_/i.test(k)) localStorage.removeItem(k);',
-      '    });',
-      '  }catch(e){}',
-      // Hook into both events to guarantee our values win
-      '  document.addEventListener("DOMContentLoaded",inject);',
-      '  window.addEventListener("load",inject);',
-      // Also run immediately in case parsing is already past DOMContentLoaded
-      '  if(document.readyState!=="loading") inject();',
-      '})();',
-    ].join('\n')
-    doc.body.appendChild(overrideScript)
-
-    // Return the full injected HTML string (keeps original styles + scripts intact)
-    const finalHtml = doc.documentElement.outerHTML
-    const m = finalHtml.match(/@page\s*\{[^}]*size:\s*([^;]+);/)
-    let pageSize: { widthMm: number; heightMm: number } | undefined
-    if (m) {
-      const sz = m[1].trim().toLowerCase()
-      if (/a4\s+landscape|landscape\s+a4/.test(sz)) pageSize = { widthMm: 297, heightMm: 210 }
-      else if (/a3\s+landscape|landscape\s+a3/.test(sz)) pageSize = { widthMm: 420, heightMm: 297 }
-      else if (/a3/.test(sz)) pageSize = { widthMm: 297, heightMm: 420 }
-      else {
-        const nm = sz.match(/([\d.]+)mm\s+([\d.]+)mm/)
-        if (nm) pageSize = { widthMm: parseFloat(nm[1]), heightMm: parseFloat(nm[2]) }
-      }
-    }
-    return { title: section.title, html: finalHtml, ...pageSize }
-  })
-
-  // Open the page manager modal
-  reportPages.value  = pages
-  showReportModal.value = true
-}
 </script>

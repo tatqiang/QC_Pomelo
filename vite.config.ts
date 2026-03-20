@@ -6,6 +6,10 @@ import path from 'path'
 
 // https://vite.dev/config/
 export default defineConfig({
+  server: {
+    port: 5174,
+    strictPort: true,   // fail fast if 5174 is taken instead of silently using 5175
+  },
   plugins: [
     vue(),
     tailwindcss(),
