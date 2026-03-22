@@ -19,11 +19,14 @@ export interface ItrStatus {
 
 export type ItrStatusCode =
     | 'plan'
+    | 'request_qc'
     | 'request_internal_inspection'
     | 'internal_request'
     | 'external_request'
     | 'report_submitted'
     | 'approved'
+    | 'pending'
+    | 'cancelled'
 
 export type ItrStatusInsert = Omit<ItrStatus, 'id' | 'created_at' | 'updated_at'>
 export type ItrStatusUpdate = Partial<Omit<ItrStatus, 'id' | 'project_id' | 'created_at' | 'updated_at'>>
@@ -31,23 +34,27 @@ export type ItrStatusUpdate = Partial<Omit<ItrStatus, 'id' | 'project_id' | 'cre
 // ── Default statuses seeded for every new project ─────────────────────────────
 
 export const DEFAULT_ITR_STATUSES: Omit<ItrStatusInsert, 'project_id'>[] = [
-    { code: 'plan',                         title: 'Plan',                         sort_order: 1, color: '#64748B', icon: 'mdi-clipboard-list-outline',  is_active: true },
-    { code: 'request_internal_inspection',  title: 'Pending Internal Inspection',  sort_order: 2, color: '#1D4ED8', icon: 'mdi-clock-check-outline',     is_active: true },
-    { code: 'internal_request',             title: 'Internal Inspection',          sort_order: 3, color: '#2563EB', icon: 'mdi-send-outline',            is_active: true },
-    { code: 'external_request',             title: 'ITR Requested',                sort_order: 4, color: '#7C3AED', icon: 'mdi-send-check-outline',      is_active: true },
-    { code: 'report_submitted',             title: 'Report Submitted',             sort_order: 5, color: '#0891B2', icon: 'mdi-file-check-outline',      is_active: true },
-    { code: 'approved',                     title: 'Approved',                     sort_order: 6, color: '#059669', icon: 'mdi-check-circle-outline',    is_active: true },
+    { code: 'plan',             title: 'Plan',             sort_order: 1, color: '#64748B', icon: 'mdi-clipboard-list-outline', is_active: true },
+    { code: 'request_qc',        title: 'Requested to QC',  sort_order: 2, color: '#1D4ED8', icon: 'mdi-clock-check-outline',    is_active: true },
+    { code: 'external_request',  title: 'ITR Requested',    sort_order: 3, color: '#7C3AED', icon: 'mdi-send-check-outline',     is_active: true },
+    { code: 'report_submitted',             title: 'Report Submitted',             sort_order: 4, color: '#0891B2', icon: 'mdi-file-check-outline',      is_active: true },
+    { code: 'approved',                     title: 'Approved',                     sort_order: 5, color: '#059669', icon: 'mdi-check-circle-outline',    is_active: true },
+    { code: 'pending',                      title: 'Pending',                      sort_order: 6, color: '#F59E0B', icon: 'mdi-clock-outline',           is_active: true },
+    { code: 'cancelled',                    title: 'Cancelled',                    sort_order: 7, color: '#EF4444', icon: 'mdi-close-circle-outline',    is_active: true },
 ]
 
 // ── Workflow: allowed forward transitions ──────────────────────────────────────
 
 export const STATUS_FLOW: Record<ItrStatusCode, ItrStatusCode | null> = {
-    plan:                        'request_internal_inspection',
-    request_internal_inspection: 'internal_request',
-    internal_request:            'external_request',
+    plan:                        'request_qc',
+    request_qc:                  'external_request',
+    request_internal_inspection: 'external_request',  // legacy — kept for existing ITRs
+    internal_request:            'external_request',  // legacy — kept for existing ITRs
     external_request:            'report_submitted',
     report_submitted:            'approved',
-    approved:                    null,   // terminal
+    approved:                    null,    // terminal
+    pending:                     null,    // terminal — on hold
+    cancelled:                   null,    // terminal — cancelled
 }
 
 // ── Store ─────────────────────────────────────────────────────────────────────
@@ -156,45 +163,21 @@ export const useItrStatusStore = defineStore('itrStatus', () => {
         }
     }
 
-    /** Sync DB status rows with DEFAULT_ITR_STATUSES (title, icon, color, sort_order).
-     *  Also INSERTs any missing codes (e.g. newly added statuses like request_internal_inspection). */
+    /** Sync DB status rows with DEFAULT_ITR_STATUSES — only INSERTs missing codes.
+     *  Does NOT overwrite existing rows so user customizations (title, color, icon) are preserved. */
     const syncDefaults = async (dbRows: ItrStatus[]) => {
         if (!dbRows.length) return
         const projectId = dbRows[0].project_id
         for (const def of DEFAULT_ITR_STATUSES) {
             const row = dbRows.find(r => r.code === def.code)
             if (!row) {
-                // Missing row — insert it
+                // Missing code — insert with defaults
                 const { data, error: err } = await supabase
                     .from('itr_statuses')
                     .insert({ ...def, project_id: projectId })
                     .select()
                     .single()
                 if (!err && data) statuses.value.push(data)
-                continue
-            }
-            const needsUpdate =
-                row.title !== def.title ||
-                row.icon !== def.icon ||
-                row.color !== def.color ||
-                row.sort_order !== def.sort_order
-            if (needsUpdate) {
-                const { data, error: err } = await supabase
-                    .from('itr_statuses')
-                    .update({
-                        title: def.title,
-                        icon: def.icon,
-                        color: def.color,
-                        sort_order: def.sort_order,
-                        updated_at: new Date().toISOString(),
-                    })
-                    .eq('id', row.id)
-                    .select()
-                    .single()
-                if (!err && data) {
-                    const idx = statuses.value.findIndex(s => s.id === row.id)
-                    if (idx !== -1) statuses.value[idx] = data
-                }
             }
         }
     }
@@ -213,6 +196,67 @@ export const useItrStatusStore = defineStore('itrStatus', () => {
         }
     }
 
+    const createStatus = async (payload: ItrStatusInsert): Promise<ItrStatus | null> => {
+        loading.value = true
+        error.value   = null
+        try {
+            const { data, error: err } = await supabase
+                .from('itr_statuses')
+                .insert(payload)
+                .select()
+                .single()
+            if (err) throw err
+            if (data) statuses.value.push(data)
+            return data
+        } catch (err) {
+            error.value = err instanceof Error ? err.message : 'Failed to create status'
+            return null
+        } finally {
+            loading.value = false
+        }
+    }
+
+    const deleteStatus = async (id: string): Promise<boolean> => {
+        loading.value = true
+        error.value   = null
+        try {
+            const { error: err } = await supabase
+                .from('itr_statuses')
+                .delete()
+                .eq('id', id)
+            if (err) throw err
+            statuses.value = statuses.value.filter(s => s.id !== id)
+            return true
+        } catch (err) {
+            error.value = err instanceof Error ? err.message : 'Failed to delete status'
+            return false
+        } finally {
+            loading.value = false
+        }
+    }
+
+    const updateStatus = async (id: string, patch: ItrStatusUpdate): Promise<ItrStatus | null> => {
+        loading.value = true
+        error.value   = null
+        try {
+            const { data, error: err } = await supabase
+                .from('itr_statuses')
+                .update({ ...patch, updated_at: new Date().toISOString() })
+                .eq('id', id)
+                .select()
+                .single()
+            if (err) throw err
+            const idx = statuses.value.findIndex(s => s.id === id)
+            if (idx !== -1 && data) statuses.value[idx] = data
+            return data
+        } catch (err) {
+            error.value = err instanceof Error ? err.message : 'Failed to update status'
+            return null
+        } finally {
+            loading.value = false
+        }
+    }
+
     const clearStatuses = () => {
         statuses.value = []
     }
@@ -222,7 +266,7 @@ export const useItrStatusStore = defineStore('itrStatus', () => {
         sorted, activeStatuses,
         getById, getByCode, getLabel, getColor, getIcon, getCode, getSortOrder,
         canAdvance, getNextStatus, canEditSection,
-        fetchStatuses, seedDefaults, clearStatuses,
+        fetchStatuses, createStatus, updateStatus, deleteStatus, seedDefaults, clearStatuses,
         DEFAULT_ITR_STATUSES, STATUS_FLOW,
     }
 })

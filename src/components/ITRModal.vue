@@ -51,45 +51,24 @@
         </button>
       </div>
 
-      <!-- ── Progress bar (hidden in create mode) ──────────────────────── -->
-      <div v-if="!isNew && !showComments" class="px-6 pt-2 pb-4 bg-gray-50 border-b border-gray-200">
-        <div class="flex items-center">
-          <template v-for="(step, idx) in PROGRESS_STEPS" :key="step.code">
-            <!-- Step node -->
-            <div
-              class="flex flex-col items-center flex-1"
-              :style="{ cursor: isStepClickable(step.code) ? 'pointer' : 'default', opacity: isStepClickable(step.code) ? 1 : 0.38 }"
-              @click="isStepClickable(step.code) && selectStep(step.code)"
-            >
-              <div
-                class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold border-2"
-                :class="{
-                  'bg-green-600 border-green-600 text-white': isStepComplete(step.code),
-                  'border-current text-white': isStepActive(step.code) && !isStepComplete(step.code),
-                  'border-gray-300 text-gray-400': !isStepComplete(step.code) && !isStepActive(step.code)
-                }"
-                :style="isStepActive(step.code) && !isStepComplete(step.code) ? `background: ${step.color}; border-color: ${step.color}` : ''"
-              >
-                <svg v-if="isStepComplete(step.code)" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
-                </svg>
-                <span v-else class="text-xs">{{ idx + 1 }}</span>
-              </div>
-              <span
-                class="mt-1 text-center text-[0.6rem] leading-tight"
-                :class="selectedStep === step.code ? 'font-bold text-red-600' : 'text-gray-500'"
-                style="max-width: 72px; white-space: normal;"
-              >{{ step.label }}</span>
-            </div>
-            <!-- Connector line -->
-            <div
-              v-if="idx < PROGRESS_STEPS.length - 1"
-              class="h-0.5 transition-colors"
-              style="flex: 0 0 28px; margin-bottom: 18px;"
-              :class="isStepComplete(PROGRESS_STEPS[idx].code) ? 'bg-green-500' : 'bg-gray-200'"
-            />
-          </template>
-        </div>
+      <!-- ── Tabs (hidden in create mode) ─────────────────────────────── -->
+      <div v-if="!isNew && !showComments" class="flex border-b border-gray-200">
+        <button
+          type="button"
+          :class="['flex-1 py-3 text-sm font-semibold border-b-2 transition',
+            activeTab === 'request_itr'
+              ? 'border-[#81938A] text-[#81938A] bg-[#81938A]/10'
+              : 'border-transparent text-gray-500 bg-gray-50 hover:bg-gray-100 hover:text-gray-700']"
+          @click="activeTab = 'request_itr'; editMode = false"
+        >REQUEST ITR</button>
+        <button
+          type="button"
+          :class="['flex-1 py-3 text-sm font-semibold border-b-2 transition',
+            activeTab === 'inspection_report'
+              ? 'border-blue-500 text-blue-600 bg-blue-50'
+              : 'border-transparent text-gray-500 bg-gray-100 hover:bg-gray-200 hover:text-gray-700']"
+          @click="activeTab = 'inspection_report'; editMode = false"
+        >INSPECTION &amp; REPORT</button>
       </div>
 
       <!-- ── Scrollable form content ────────────────────────────────────── -->
@@ -100,13 +79,13 @@
 
       <div v-if="!showComments" class="flex-1 overflow-y-auto px-6 py-5" style="min-height: 360px;">
 
-        <!-- ═══ PLAN FORM ════════════════════════════════════════════════ -->
-        <div v-if="selectedStep === 'plan'">
+        <!-- ═══ PLAN / REQUEST ITR FORM ═════════════════════════════════ -->
+        <div v-if="activeTab === 'request_itr' || isNew">
           <form ref="draftFormRef" @submit.prevent class="space-y-3">
               <div class="text-[0.65rem] font-semibold tracking-widest uppercase text-gray-400 mb-1">Basic Information</div>
               <div>
                 <label class="block text-xs font-medium text-gray-600 mb-1">Title *</label>
-                <input v-model="draftForm.title" type="text" required :readonly="!isDraftEditable"
+                <input v-model="requestForm.req_title" type="text" required :readonly="!isDraftEditable"
                   :class="isDraftEditable ? 'border-gray-300 bg-white' : 'border-gray-200 bg-gray-50'"
                   class="w-full rounded border px-3 py-1.5 text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-[#81938A]" />
               </div>
@@ -119,7 +98,7 @@
                 </div>
                 <div class="sm:col-span-7">
                   <label class="block text-xs font-medium text-gray-600 mb-1">Inspection Type</label>
-                  <select v-model="draftForm.itr_type_id" :disabled="!isDraftEditable"
+                  <select v-model="requestForm.req_itr_type_id" :disabled="!isDraftEditable"
                     :class="isDraftEditable ? 'border-gray-300 bg-white' : 'border-gray-200 bg-gray-50'"
                     class="w-full rounded border px-3 py-1.5 text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-[#81938A]">
                     <option :value="null">— None —</option>
@@ -130,7 +109,7 @@
               <!-- External ITR Number -->
               <div>
                 <label class="block text-xs font-medium text-gray-600 mb-1">ITR Number <span class="text-gray-400 font-normal">(external — filled by external team)</span></label>
-                <input v-model="draftForm.itr_number" type="text" :readonly="!isDraftEditable" placeholder="e.g. CHN1A-ITR-00XX"
+                <input v-model="requestForm.req_itr_number" type="text" :readonly="!isDraftEditable" placeholder="e.g. CHN1A-ITR-00XX"
                   :class="isDraftEditable ? 'border-gray-300 bg-white' : 'border-gray-200 bg-gray-50'"
                   class="w-full rounded border px-3 py-1.5 text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-[#81938A]" />
               </div>
@@ -138,13 +117,13 @@
               <div class="grid grid-cols-1 sm:grid-cols-12 gap-3">
                 <div class="sm:col-span-8">
                   <label class="block text-xs font-medium text-gray-600 mb-1">Drawing Number</label>
-                  <input v-model="draftForm.drawing_number" type="text" :readonly="!isDraftEditable" placeholder="e.g. DWG-E-001"
+                  <input v-model="requestForm.req_drawing_number" type="text" :readonly="!isDraftEditable" placeholder="e.g. DWG-E-001"
                     :class="isDraftEditable ? 'border-gray-300 bg-white' : 'border-gray-200 bg-gray-50'"
                     class="w-full rounded border px-3 py-1.5 text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-[#81938A]" />
                 </div>
                 <div class="sm:col-span-4">
                   <label class="block text-xs font-medium text-gray-600 mb-1">Revision No.</label>
-                  <input v-model="draftForm.revision_number" type="text" :readonly="!isDraftEditable" placeholder="e.g. Rev.A"
+                  <input v-model="requestForm.req_revision_number" type="text" :readonly="!isDraftEditable" placeholder="e.g. Rev.A"
                     :class="isDraftEditable ? 'border-gray-300 bg-white' : 'border-gray-200 bg-gray-50'"
                     class="w-full rounded border px-3 py-1.5 text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-[#81938A]" />
                 </div>
@@ -152,7 +131,7 @@
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label class="block text-xs font-medium text-gray-600 mb-1">Discipline</label>
-                  <select v-model="draftForm.discipline_id" :disabled="!isDraftEditable"
+                  <select v-model="requestForm.req_discipline_id" :disabled="!isDraftEditable"
                     :class="isDraftEditable ? 'border-gray-300 bg-white' : 'border-gray-200 bg-gray-50'"
                     class="w-full rounded border px-3 py-1.5 text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-[#81938A]">
                     <option :value="null">— None —</option>
@@ -161,7 +140,7 @@
                 </div>
                 <div>
                   <label class="block text-xs font-medium text-gray-600 mb-1">Planned Inspection Date & Time</label>
-                  <DateTimePicker v-model="draftForm.planned_inspection_date" :readonly="!isDraftEditable" />
+                  <DateTimePicker v-model="requestForm.req_planned_inspection_date" :readonly="!isDraftEditable" />
                 </div>
               </div>
 
@@ -239,7 +218,7 @@
               <div class="text-[0.65rem] font-semibold tracking-widest uppercase text-gray-400 mb-1 mt-2">Task & Location</div>
               <div>
                 <label class="block text-xs font-medium text-gray-600 mb-1">Linked Task</label>
-                <select v-model="draftForm.task_id" :disabled="!isDraftEditable"
+                <select v-model="requestForm.req_task_id" :disabled="!isDraftEditable"
                   :class="isDraftEditable ? 'border-gray-300 bg-white' : 'border-gray-200 bg-gray-50'"
                   class="w-full rounded border px-3 py-1.5 text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-[#81938A]">
                   <option :value="null">— None —</option>
@@ -255,7 +234,7 @@
                     <label v-for="o in areaItems" :key="o.value"
                       class="flex items-center gap-2 py-0.5 px-1 text-xs rounded hover:bg-gray-50 cursor-pointer"
                       :class="!isDraftEditable ? 'pointer-events-none opacity-60' : ''">
-                      <input type="checkbox" :value="o.value" v-model="draftForm.area_ids"
+                      <input type="checkbox" :value="o.value" v-model="requestForm.req_area_ids"
                         :disabled="!isDraftEditable"
                         class="rounded border-gray-300 text-[#81938A] focus:ring-[#81938A]" />
                       <span class="text-gray-800">{{ o.title }}</span>
@@ -264,7 +243,7 @@
                 </div>
                 <div>
                   <label class="block text-xs font-medium text-gray-600 mb-1">Location</label>
-                  <input v-model="draftForm.location" type="text" :readonly="!isDraftEditable" placeholder="e.g. Level 3, Grid C-4"
+                  <input v-model="requestForm.req_location" type="text" :readonly="!isDraftEditable" placeholder="e.g. Level 3, Grid C-4"
                     :class="isDraftEditable ? 'border-gray-300 bg-white' : 'border-gray-200 bg-gray-50'"
                     class="w-full rounded border px-3 py-1.5 text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-[#81938A]" />
                 </div>
@@ -274,28 +253,26 @@
               <div>
                 <label class="block text-xs font-medium text-gray-600 mb-1">Select ITP</label>
                 <!-- Read-only display -->
-                <div v-if="!isDraftEditable"
-                  class="w-full rounded border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-900 min-h-[2rem]">
-                  {{ draftForm.itp_id ? (itpStore.itps.find(p => p.id === draftForm.itp_id)?.doc_no + ' — ' + itpStore.itps.find(p => p.id === draftForm.itp_id)?.title) : '— None —' }}
+                <div v-if="!isDraftEditable" class="text-sm text-gray-900">
+                  {{ requestForm.req_itp_id ? reqItpSelectedLabel : '— None —' }}
                 </div>
-                <!-- Browse button selector -->
-                <div v-else class="flex items-start gap-2">
-                  <div class="flex-1 text-sm leading-snug py-0.5">
-                    <span v-if="draftForm.itp_id" class="text-gray-900 whitespace-normal break-words">{{ itpSelectedLabel }}</span>
-                    <span v-else class="text-gray-400 italic">— None selected —</span>
-                  </div>
-                  <div class="shrink-0 flex gap-1 mt-0.5">
-                    <button v-if="draftForm.itp_id" type="button" class="text-gray-400 hover:text-gray-600 p-1 rounded" title="Clear" @click="draftForm.itp_id = null">
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <!-- Editable: material-style -->
+                <div v-else>
+                  <div v-if="requestForm.req_itp_id" class="flex items-center justify-between px-2 py-1 bg-[#81938A]/10 rounded text-sm mb-1.5">
+                    <span class="font-medium text-gray-800 truncate">{{ reqItpSelectedLabel }}</span>
+                    <button type="button" class="ml-2 shrink-0 text-gray-400 hover:text-red-400 transition" @click="requestForm.req_itp_id = null">
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                       </svg>
                     </button>
-                    <button type="button" class="p-1.5 rounded bg-[#81938A]/10 text-[#81938A] hover:bg-[#81938A]/20 transition" @click="openItpPicker" title="Search ITP">
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>
-                      </svg>
-                    </button>
                   </div>
+                  <button type="button" @click="openItpPicker('request')"
+                    class="w-full flex items-center justify-center gap-2 px-3 py-1.5 border border-dashed border-gray-300 rounded text-sm text-gray-500 hover:border-[#81938A] hover:text-[#81938A] transition">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z"/>
+                    </svg>
+                    Browse ITP…
+                  </button>
                 </div>
               </div>
               <template v-if="isMatType">
@@ -328,7 +305,7 @@
                       </div>
                     </div>
                     <!-- Browse button -->
-                    <button type="button" @click="openMatPicker"
+                    <button type="button" @click="openMatPicker(true)"
                       class="w-full flex items-center justify-center gap-2 px-3 py-1.5 border border-dashed border-gray-300 rounded text-sm text-gray-500 hover:border-[#81938A] hover:text-[#81938A] transition mt-1">
                       <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z"/>
@@ -369,11 +346,11 @@
                 <p v-else class="text-xs text-gray-400 italic mb-2">No checklists selected.</p>
 
                 <!-- Quick-add chips from linked ITP -->
-                <div v-if="unselectedLinkedChecklists.length" class="mb-2">
+                <div v-if="unselectedLinkedChecklistsReq.length" class="mb-2">
                   <p class="text-xs text-gray-400 mb-1">From linked ITP:</p>
                   <div class="flex flex-wrap gap-1.5">
                     <button
-                      v-for="c in unselectedLinkedChecklists" :key="c.id"
+                      v-for="c in unselectedLinkedChecklistsReq" :key="c.id"
                       type="button"
                       class="px-2 py-0.5 text-xs font-mono font-semibold rounded-full border border-blue-300 bg-white text-blue-600 hover:bg-blue-50 transition"
                       @click="toggleChecklist(c.id)"
@@ -420,7 +397,7 @@
 
               <div class="mt-1">
                 <label class="block text-xs font-medium text-gray-600 mb-1">Notes</label>
-                <textarea v-model="draftForm.notes" rows="2" :readonly="!isDraftEditable"
+                <textarea v-model="requestForm.req_notes" rows="2" :readonly="!isDraftEditable"
                   :class="isDraftEditable ? 'border-gray-300 bg-white' : 'border-gray-200 bg-gray-50'"
                   class="w-full rounded border px-3 py-1.5 text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-[#81938A] resize-y" />
               </div>
@@ -518,8 +495,402 @@
           </form>
         </div>
 
-        <!-- ═══ INTERNAL INSPECTION FORM ════════════════════════════════ -->
-        <div v-else-if="selectedStep === 'internal_request'">
+        <!-- ═══ INSPECTION & REPORT FORM ════════════════════════════════ -->
+        <div v-else-if="activeTab === 'inspection_report'">
+          <form class="space-y-3">
+
+            <!-- ── Current Status ─────────────────────────────────────────── -->
+            <div class="flex items-center gap-3 p-3 rounded-lg border border-gray-200 bg-gray-50">
+              <div class="flex-1">
+                <div class="text-[0.65rem] font-semibold tracking-widest uppercase text-gray-400 mb-1">Current Status</div>
+                <!-- View mode: colored badge -->
+                <div v-if="!isInspectionTabEditable" class="flex items-center gap-2">
+                  <span
+                    class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold"
+                    :style="liveItr ? `background:${itrStatusStore.getColor(liveItr.status_id)}20; color:${itrStatusStore.getColor(liveItr.status_id)}` : ''"
+                  >
+                    <span class="w-2 h-2 rounded-full inline-block"
+                      :style="liveItr ? `background:${itrStatusStore.getColor(liveItr.status_id)}` : ''"
+                    />
+                    {{ liveItr ? itrStatusStore.getLabel(liveItr.status_id) : '—' }}
+                  </span>
+                </div>
+                <!-- Edit mode: dropdown -->
+                <select
+                  v-else
+                  v-model="localStatusId"
+                  class="w-full rounded border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-[#81938A]"
+                >
+                  <option v-for="s in inspectionStatuses" :key="s.id" :value="s.id">
+                    {{ s.title }}
+                  </option>
+                </select>
+              </div>
+            </div>
+
+            <!-- ── Basic Information (shared with REQUEST ITR) ────────────── -->
+            <div class="text-[0.65rem] font-semibold tracking-widest uppercase text-gray-400 mb-1">Basic Information</div>
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1">Title *</label>
+              <input v-model="draftForm.title" type="text" required :readonly="!isInspectionTabEditable"
+                :class="isInspectionTabEditable ? 'border-gray-300 bg-white' : 'border-gray-200 bg-gray-50'"
+                class="w-full rounded border px-3 py-1.5 text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-[#81938A]" />
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-12 gap-3">
+              <div class="sm:col-span-5">
+                <label class="block text-xs font-medium text-gray-600 mb-1">Item No <span class="text-gray-400 font-normal">(internal)</span></label>
+                <div class="w-full rounded border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm font-mono text-[#81938A] font-semibold min-h-[2rem]">
+                  {{ liveItr?.item_no ?? '—' }}
+                </div>
+              </div>
+              <div class="sm:col-span-7">
+                <label class="block text-xs font-medium text-gray-600 mb-1">Inspection Type</label>
+                <select v-model="draftForm.itr_type_id" :disabled="!isInspectionTabEditable"
+                  :class="isInspectionTabEditable ? 'border-gray-300 bg-white' : 'border-gray-200 bg-gray-50'"
+                  class="w-full rounded border px-3 py-1.5 text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-[#81938A]">
+                  <option :value="null">— None —</option>
+                  <option v-for="o in itrTypeStore.options" :key="o.value" :value="o.value">{{ o.title }}</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1">ITR Number <span class="text-gray-400 font-normal">(external — filled by external team)</span></label>
+              <input v-model="draftForm.itr_number" type="text" :readonly="!isInspectionTabEditable" placeholder="e.g. CHN1A-ITR-00XX"
+                :class="isInspectionTabEditable ? 'border-gray-300 bg-white' : 'border-gray-200 bg-gray-50'"
+                class="w-full rounded border px-3 py-1.5 text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-[#81938A]" />
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-12 gap-3">
+              <div class="sm:col-span-8">
+                <label class="block text-xs font-medium text-gray-600 mb-1">Drawing Number</label>
+                <input v-model="draftForm.drawing_number" type="text" :readonly="!isInspectionTabEditable" placeholder="e.g. DWG-E-001"
+                  :class="isInspectionTabEditable ? 'border-gray-300 bg-white' : 'border-gray-200 bg-gray-50'"
+                  class="w-full rounded border px-3 py-1.5 text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-[#81938A]" />
+              </div>
+              <div class="sm:col-span-4">
+                <label class="block text-xs font-medium text-gray-600 mb-1">Revision No.</label>
+                <input v-model="draftForm.revision_number" type="text" :readonly="!isInspectionTabEditable" placeholder="e.g. Rev.A"
+                  :class="isInspectionTabEditable ? 'border-gray-300 bg-white' : 'border-gray-200 bg-gray-50'"
+                  class="w-full rounded border px-3 py-1.5 text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-[#81938A]" />
+              </div>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Discipline</label>
+                <select v-model="draftForm.discipline_id" :disabled="!isInspectionTabEditable"
+                  :class="isInspectionTabEditable ? 'border-gray-300 bg-white' : 'border-gray-200 bg-gray-50'"
+                  class="w-full rounded border px-3 py-1.5 text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-[#81938A]">
+                  <option :value="null">— None —</option>
+                  <option v-for="o in disciplineStore.options" :key="o.value" :value="o.value">{{ o.title }}</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Planned Inspection Date & Time</label>
+                <DateTimePicker v-model="draftForm.planned_inspection_date" :readonly="!isInspectionTabEditable" />
+              </div>
+            </div>
+            <div v-if="!isNew && draftByName" class="flex items-center gap-1.5 text-xs text-gray-500 pt-0.5">
+              <span class="mdi mdi-account-outline text-base leading-none"></span>
+              <span>Opened by <span class="font-semibold text-gray-700">{{ draftByName }}</span></span>
+              <template v-if="liveItr?.draft_at">
+                <span class="text-gray-300">·</span>
+                <span>{{ new Date(liveItr.draft_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) }}</span>
+              </template>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1">QC in Charge</label>
+              <div v-if="localQcUserIds.length" class="flex flex-wrap gap-1.5 mb-1.5">
+                <span v-for="uid in localQcUserIds" :key="uid"
+                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-teal-50 text-teal-700 border border-teal-200">
+                  <span class="mdi mdi-account-check text-sm leading-none"></span>
+                  {{ qcMemberLabel(uid) }}
+                  <button v-if="isInspectionTabEditable" type="button" @click="localQcUserIds = localQcUserIds.filter(id => id !== uid)"
+                    class="ml-0.5 text-teal-400 hover:text-red-500 transition leading-none">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                  </button>
+                </span>
+              </div>
+              <div v-else-if="!isInspectionTabEditable" class="text-xs text-gray-400 italic">— None assigned —</div>
+              <div v-if="isInspectionTabEditable" class="relative">
+                <div class="flex items-center gap-1.5 border border-gray-300 bg-white rounded px-2.5 py-1.5">
+                  <svg class="w-3.5 h-3.5 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z"/>
+                  </svg>
+                  <input v-model="qcSearch" type="text" placeholder="Search QC member…"
+                    class="flex-1 text-sm bg-transparent outline-none placeholder-gray-400"
+                    @focus="qcDropOpen = true"
+                    @blur="setTimeout(() => { qcDropOpen = false }, 150)" />
+                </div>
+                <div v-if="qcDropOpen"
+                  class="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded shadow-lg max-h-48 overflow-y-auto">
+                  <p v-if="qcFilteredMembers.length === 0" class="text-xs text-gray-400 px-3 py-2">No QC members found</p>
+                  <button v-for="m in qcFilteredMembers" :key="m.user_id" type="button"
+                    :disabled="localQcUserIds.includes(m.user_id)"
+                    class="w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-teal-50 transition disabled:opacity-40 disabled:cursor-default"
+                    @mousedown.prevent="localQcUserIds.includes(m.user_id) ? null : (localQcUserIds.push(m.user_id), qcSearch = '', qcDropOpen = false)">
+                    <span class="flex-1 text-gray-800 font-medium">{{ m.first_name ? (m.first_name + (m.last_name ? ' ' + m.last_name : '')) : m.email }}</span>
+                    <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-teal-50 text-teal-700 border border-teal-200 shrink-0">{{ qcMemberRoleBadge(m) }}</span>
+                    <svg v-if="localQcUserIds.includes(m.user_id)" class="w-3.5 h-3.5 text-teal-500 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="text-[0.65rem] font-semibold tracking-widest uppercase text-gray-400 mb-1 mt-2">Task & Location</div>
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1">Linked Task</label>
+              <select v-model="draftForm.task_id" :disabled="!isInspectionTabEditable"
+                :class="isInspectionTabEditable ? 'border-gray-300 bg-white' : 'border-gray-200 bg-gray-50'"
+                class="w-full rounded border px-3 py-1.5 text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-[#81938A]">
+                <option :value="null">— None —</option>
+                <option v-for="o in taskItems" :key="o.value" :value="o.value">{{ o.title }}</option>
+              </select>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Linked Areas</label>
+                <div :class="isInspectionTabEditable ? 'border-gray-300 bg-white' : 'border-gray-200 bg-gray-50'"
+                  class="border rounded max-h-32 overflow-y-auto px-2 py-1 space-y-0.5">
+                  <p v-if="areaItems.length === 0" class="text-xs text-gray-400 py-1">No areas set up</p>
+                  <label v-for="o in areaItems" :key="o.value"
+                    class="flex items-center gap-2 py-0.5 px-1 text-xs rounded hover:bg-gray-50 cursor-pointer"
+                    :class="!isInspectionTabEditable ? 'pointer-events-none opacity-60' : ''">
+                    <input type="checkbox" :value="o.value" v-model="draftForm.area_ids"
+                      :disabled="!isInspectionTabEditable"
+                      class="rounded border-gray-300 text-[#81938A] focus:ring-[#81938A]" />
+                    <span class="text-gray-800">{{ o.title }}</span>
+                  </label>
+                </div>
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Location</label>
+                <input v-model="draftForm.location" type="text" :readonly="!isInspectionTabEditable" placeholder="e.g. Level 3, Grid C-4"
+                  :class="isInspectionTabEditable ? 'border-gray-300 bg-white' : 'border-gray-200 bg-gray-50'"
+                  class="w-full rounded border px-3 py-1.5 text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-[#81938A]" />
+              </div>
+            </div>
+            <div class="text-[0.65rem] font-semibold tracking-widest uppercase text-gray-400 mb-1 mt-2">Inspection & Test Plan</div>
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1">Select ITP</label>
+              <div v-if="!isInspectionTabEditable" class="text-sm text-gray-900">
+                {{ draftForm.itp_id ? itpSelectedLabel : '— None —' }}
+              </div>
+              <div v-else>
+                <div v-if="draftForm.itp_id" class="flex items-center justify-between px-2 py-1 bg-[#81938A]/10 rounded text-sm mb-1.5">
+                  <span class="font-medium text-gray-800 truncate">{{ itpSelectedLabel }}</span>
+                  <button type="button" class="ml-2 shrink-0 text-gray-400 hover:text-red-400 transition" @click="draftForm.itp_id = null">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                  </button>
+                </div>
+                <button type="button" @click="openItpPicker"
+                  class="w-full flex items-center justify-center gap-2 px-3 py-1.5 border border-dashed border-gray-300 rounded text-sm text-gray-500 hover:border-[#81938A] hover:text-[#81938A] transition">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z"/>
+                  </svg>
+                  Browse ITP…
+                </button>
+              </div>
+            </div>
+            <template v-if="isMatType">
+              <div class="text-[0.65rem] font-semibold tracking-widest uppercase text-gray-400 mb-1 mt-2">Material Approval Documents</div>
+              <div>
+                <div class="flex items-center justify-between mb-1">
+                  <span class="text-xs font-medium text-gray-600">Linked Materials</span>
+                </div>
+                <div v-if="!isInspectionTabEditable">
+                  <div v-if="!localMaterialIds.length" class="text-sm text-gray-400">— None —</div>
+                  <div v-for="mid in localMaterialIds" :key="mid" class="text-sm text-gray-900 py-0.5">{{ getMaterialLabel(mid) }}</div>
+                </div>
+                <div v-else>
+                  <div v-if="localMaterialIds.length" class="space-y-1 mb-1.5">
+                    <div v-for="mid in localMaterialIds" :key="mid"
+                      class="flex items-center justify-between px-2 py-1 bg-[#81938A]/10 rounded text-sm">
+                      <span class="font-medium text-gray-800 truncate">{{ getMaterialLabel(mid) }}</span>
+                      <button type="button" class="ml-2 shrink-0 text-gray-400 hover:text-red-400 transition" @click="removeMaterialFromList(mid)">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                  <button type="button" @click="openMatPicker"
+                    class="w-full flex items-center justify-center gap-2 px-3 py-1.5 border border-dashed border-gray-300 rounded text-sm text-gray-500 hover:border-[#81938A] hover:text-[#81938A] transition mt-1">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z"/>
+                    </svg>
+                    Browse all materials…
+                  </button>
+                </div>
+              </div>
+            </template>
+            <!-- ── HTML Checklists ─────────────────────────────────────────────── -->
+            <template v-if="isInspectionTabEditable">
+              <div class="text-[0.65rem] font-semibold tracking-widest uppercase text-gray-400 mb-1 mt-2">HTML Checklists</div>
+              <div v-if="draftChecklistIds.length" class="space-y-1 mb-2">
+                <div v-for="cid in draftChecklistIds" :key="cid"
+                  class="flex items-center gap-2 px-2 py-1.5 bg-blue-50 border border-blue-100 rounded-lg cursor-pointer hover:bg-blue-100 transition"
+                  @click="openChecklistViewer(cid)" :title="'View ' + (checklistById(cid)?.code ?? cid)">
+                  <svg class="w-3.5 h-3.5 text-blue-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+                  <span class="font-mono text-xs font-bold text-blue-700 shrink-0">{{ checklistById(cid)?.code ?? '…' }}</span>
+                  <span class="text-xs text-gray-700 flex-1 truncate">{{ checklistById(cid)?.title ?? cid }}</span>
+                  <span v-if="itpDocNoForChecklist(cid)" class="text-xs text-gray-400 shrink-0">{{ itpDocNoForChecklist(cid) }}</span>
+                  <svg class="w-3.5 h-3.5 text-blue-300 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                  <button type="button" class="p-0.5 hover:bg-blue-200 rounded shrink-0" title="Remove" @click.stop="toggleChecklist(cid)">
+                    <svg class="w-3 h-3 text-gray-400 hover:text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                  </button>
+                </div>
+              </div>
+              <p v-else class="text-xs text-gray-400 italic mb-2">No checklists selected.</p>
+              <div v-if="unselectedLinkedChecklists.length" class="mb-2">
+                <p class="text-xs text-gray-400 mb-1">From linked ITP:</p>
+                <div class="flex flex-wrap gap-1.5">
+                  <button v-for="c in unselectedLinkedChecklists" :key="c.id" type="button"
+                    class="px-2 py-0.5 text-xs font-mono font-semibold rounded-full border border-blue-300 bg-white text-blue-600 hover:bg-blue-50 transition"
+                    @click="toggleChecklist(c.id)" :title="c.title">+ {{ c.code }}</button>
+                </div>
+              </div>
+              <button type="button"
+                class="inline-flex items-center gap-1.5 px-2.5 py-1.5 border border-dashed border-gray-300 hover:border-blue-400 rounded-lg text-xs text-gray-500 hover:text-blue-500 transition"
+                @click="openChecklistPicker">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z"/></svg>
+                Browse all checklists
+              </button>
+            </template>
+            <template v-else-if="draftChecklistIds.length">
+              <div class="text-[0.65rem] font-semibold tracking-widest uppercase text-gray-400 mb-1 mt-2">HTML Checklists</div>
+              <div class="space-y-1">
+                <div v-for="cid in draftChecklistIds" :key="cid"
+                  class="flex items-center gap-2 px-2 py-1.5 bg-blue-50 border border-blue-100 rounded-lg cursor-pointer hover:bg-blue-100 transition"
+                  @click="openChecklistViewer(cid)" :title="'View ' + (checklistById(cid)?.code ?? cid)">
+                  <svg class="w-3.5 h-3.5 text-blue-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+                  <span class="font-mono text-xs font-bold text-blue-700 shrink-0">{{ checklistById(cid)?.code ?? '…' }}</span>
+                  <span class="text-xs text-gray-700 flex-1 truncate">{{ checklistById(cid)?.title ?? cid }}</span>
+                  <span v-if="itpDocNoForChecklist(cid)" class="text-xs text-gray-400 shrink-0">{{ itpDocNoForChecklist(cid) }}</span>
+                  <svg class="w-3.5 h-3.5 text-blue-300 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                </div>
+              </div>
+            </template>
+            <!-- ── Inspection & Report exclusive fields ──────────────────────── -->
+            <div class="border-t border-gray-200 pt-3 mt-2">
+              <div class="text-[0.65rem] font-semibold tracking-widest uppercase text-gray-400 mb-2">Inspection & Report</div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                <div>
+                  <label class="block text-xs font-medium text-gray-600 mb-1">Confirmed Inspection Date & Time</label>
+                  <DateTimePicker v-model="internalForm.req_inspection_date" :readonly="!isInspectionTabEditable" />
+                </div>
+                <div>
+                  <label class="block text-xs font-medium text-gray-600 mb-1">Actual Inspection Date & Time</label>
+                  <DateTimePicker v-model="reportForm.inspection_date" :readonly="!isInspectionTabEditable" />
+                </div>
+              </div>
+              <div class="mb-3">
+                <label class="block text-xs font-medium text-gray-600 mb-1">ITR Request File Link (optional)</label>
+                <a v-if="!isInspectionTabEditable && externalForm.itr_request_file_link"
+                  :href="externalForm.itr_request_file_link" target="_blank" rel="noopener noreferrer"
+                  class="block w-full rounded border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-blue-600 underline truncate hover:text-blue-800">
+                  {{ externalForm.itr_request_file_link }}
+                </a>
+                <input v-else v-model="externalForm.itr_request_file_link" type="text" :readonly="!isInspectionTabEditable" placeholder="https://…"
+                  :class="isInspectionTabEditable ? 'border-gray-300 bg-white' : 'border-gray-200 bg-gray-50'"
+                  class="w-full rounded border px-3 py-1.5 text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-[#81938A]" />
+              </div>
+              <div class="mb-3">
+                <label class="block text-xs font-medium text-gray-600 mb-1">ITR Report File Link (optional)</label>
+                <a v-if="!isInspectionTabEditable && reportForm.itr_report_file_link"
+                  :href="reportForm.itr_report_file_link" target="_blank" rel="noopener noreferrer"
+                  class="block w-full rounded border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-blue-600 underline truncate hover:text-blue-800">
+                  {{ reportForm.itr_report_file_link }}
+                </a>
+                <input v-else v-model="reportForm.itr_report_file_link" type="text" :readonly="!isInspectionTabEditable" placeholder="https://…"
+                  :class="isInspectionTabEditable ? 'border-gray-300 bg-white' : 'border-gray-200 bg-gray-50'"
+                  class="w-full rounded border px-3 py-1.5 text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-[#81938A]" />
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">QC Notes (optional)</label>
+                <textarea v-model="internalForm.qc_notes" rows="2" :readonly="!isInspectionTabEditable"
+                  :class="isInspectionTabEditable ? 'border-gray-300 bg-white' : 'border-gray-200 bg-gray-50'"
+                  class="w-full rounded border px-3 py-1.5 text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-[#81938A] resize-y" />
+              </div>
+            </div>
+
+            <!-- Attachments (edit mode) -->
+            <template v-if="isInspectionTabEditable && liveItr">
+              <div class="text-[0.65rem] font-semibold tracking-widest uppercase text-gray-400 mb-1 mt-3">Inspection Attachments</div>
+              <!-- Drawings -->
+              <div>
+                <div class="flex items-center gap-2 mb-1">
+                  <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7"/></svg>
+                  <span class="text-sm font-medium text-gray-700">Drawings</span>
+                </div>
+                <div v-for="(f, i) in pendingInternalDrawings" :key="'id'+i" class="flex items-center gap-1 mb-1">
+                  <svg class="w-3.5 h-3.5 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                  <span class="text-sm truncate flex-1 text-gray-700">{{ f.name }}</span>
+                  <button type="button" class="text-red-400 hover:text-red-600 p-0.5" @click="pendingInternalDrawings.splice(i,1)">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                  </button>
+                </div>
+                <button type="button" class="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium rounded bg-[#81938A]/10 text-[#81938A] hover:bg-[#81938A]/20 transition" @click="internalDrawingInputRef?.click()">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                  Add Drawing
+                </button>
+                <input ref="internalDrawingInputRef" type="file" class="hidden" accept=".pdf,image/*" multiple @change="onFilePick($event, pendingInternalDrawings)" />
+              </div>
+              <!-- Delivery Orders (MAT only) -->
+              <div v-if="isMatType" class="mt-2">
+                <div class="flex items-center gap-2 mb-1">
+                  <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0"/></svg>
+                  <span class="text-sm font-medium text-gray-700">Delivery Order Files</span>
+                </div>
+                <div v-for="(f, i) in pendingInternalDOs" :key="'ido'+i" class="flex items-center gap-1 mb-1">
+                  <svg class="w-3.5 h-3.5 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                  <span class="text-sm truncate flex-1 text-gray-700">{{ f.name }}</span>
+                  <button type="button" class="text-red-400 hover:text-red-600 p-0.5" @click="pendingInternalDOs.splice(i,1)">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                  </button>
+                </div>
+                <button type="button" class="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium rounded bg-[#81938A]/10 text-[#81938A] hover:bg-[#81938A]/20 transition" @click="internalDoInputRef?.click()">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                  Add DO File
+                </button>
+                <input ref="internalDoInputRef" type="file" class="hidden" accept=".pdf,image/*" multiple @change="onFilePick($event, pendingInternalDOs)" />
+              </div>
+              <!-- Additional Files -->
+              <div class="mt-2">
+                <div class="flex items-center gap-2 mb-1">
+                  <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
+                  <span class="text-sm font-medium text-gray-700">Additional Files</span>
+                </div>
+                <div v-for="(f, i) in pendingInternalAdditional" :key="'ia'+i" class="flex items-center gap-1 mb-1">
+                  <svg class="w-3.5 h-3.5 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                  <span class="text-sm truncate flex-1 text-gray-700">{{ f.name }}</span>
+                  <button type="button" class="text-red-400 hover:text-red-600 p-0.5" @click="pendingInternalAdditional.splice(i,1)">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                  </button>
+                </div>
+                <button type="button" class="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium rounded bg-[#81938A]/10 text-[#81938A] hover:bg-[#81938A]/20 transition" @click="internalAdditionalInputRef?.click()">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                  Add File
+                </button>
+                <input ref="internalAdditionalInputRef" type="file" class="hidden" accept=".pdf,image/*,.doc,.docx,.xls,.xlsx,.zip" multiple @change="onFilePick($event, pendingInternalAdditional)" />
+              </div>
+            </template>
+            <!-- Attachments (view mode) -->
+            <template v-else-if="liveItr">
+              <div class="mt-2 space-y-2">
+                <AttachmentList :attachments="getAttachments('drawing','internal_request')" label="Drawings" />
+                <AttachmentList v-if="isMatType" :attachments="getAttachments('do','internal_request')" label="Delivery Orders" />
+                <AttachmentList :attachments="[...getAttachments('image','internal_request'), ...getAttachments('additional','internal_request')]" label="Additional Files" />
+              </div>
+            </template>
+          </form>
+        </div>
+
+        <!-- Legacy step panels — no longer used in 2-tab UI ─────────────── -->
+        <div v-else-if="false">
           <!-- Locked: not yet reached -->
           <div v-if="currentOrder < 2" class="text-center text-gray-400 py-8">
             <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
@@ -746,8 +1117,8 @@
           </form>
         </div>
 
-        <!-- ═══ REQUEST ITR FORM ════════════════════════════════════════ -->
-        <div v-else-if="selectedStep === 'external_request'">
+        <!-- ═══ REQUEST ITR FORM (legacy — hidden) ════════════════════════ -->
+        <div v-else-if="false">
           <div v-if="currentOrder < 3" class="text-center text-gray-400 py-8">
             <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
             <p>Complete Internal Inspection before this step is available.</p>
@@ -799,8 +1170,8 @@
           </form>
         </div>
 
-        <!-- ═══ REPORT SUBMITTED FORM ════════════════════════════════════ -->
-        <div v-else-if="selectedStep === 'report_submitted'">
+        <!-- ═══ REPORT SUBMITTED FORM (legacy — hidden) ════════════════ -->
+        <div v-else-if="false">
           <div v-if="currentOrder < 4" class="text-center text-gray-400 py-8">
             <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
             <p>Complete Request ITR before this step is available.</p>
@@ -840,8 +1211,8 @@
           </form>
         </div>
 
-        <!-- ═══ APPROVED FORM ════════════════════════════════════════════ -->
-        <div v-else-if="selectedStep === 'approved'">
+        <!-- ═══ APPROVED FORM (legacy — hidden) ══════════════════════════ -->
+        <div v-else-if="false">
           <div v-if="currentOrder < 5" class="text-center text-gray-400 py-8">
             <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
             <p>Submit Report before Approval is available.</p>
@@ -888,9 +1259,22 @@
         <button type="button" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 transition" @click="close">Close</button>
         <div class="flex-1" />
 
-        <!-- View mode: Edit button (not shown on stage 2 — "Edit Internal Inspection" covers it) -->
+        <!-- Create To Do button — view mode only -->
         <button
-          v-if="!isNew && canEditCurrentStep && !editMode && selectedStep !== 'internal_request' && selectedStep !== 'external_request'"
+          v-if="!isNew && !editMode"
+          type="button"
+          class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded border border-amber-400 text-amber-700 hover:bg-amber-50 transition"
+          @click="openTodoDialog"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+          </svg>
+          To Do
+        </button>
+
+        <!-- Tab 1 (REQUEST ITR): Edit button in view mode — only ITR creator can edit -->
+        <button
+          v-if="!isNew && activeTab === 'request_itr' && !editMode && isItrCreator"
           type="button"
           class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded border border-[#81938A] text-[#81938A] hover:bg-[#81938A]/10 transition"
           @click="editMode = true"
@@ -899,16 +1283,27 @@
           Edit
         </button>
 
-        <!-- View mode (plan): Submit for Internal Inspection -->
+        <!-- Tab 1 (REQUEST ITR): Request ITR to QC — only when status is Plan -->
         <button
-          v-if="!isNew && selectedStep === 'plan' && currentCode === 'plan' && !editMode"
+          v-if="!isNew && activeTab === 'request_itr' && !editMode && currentCode === 'plan'"
           type="button"
           class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded bg-blue-600 text-white hover:bg-blue-700 transition disabled:opacity-50"
           :disabled="itrStore.loading"
           @click="submitPlanForInternalInspection"
         >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-          Submit for Internal Inspection
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+          Request ITR to QC
+        </button>
+
+        <!-- Tab 2 (INSPECTION & REPORT): Edit button in view mode -->
+        <button
+          v-if="!isNew && activeTab === 'inspection_report' && !editMode"
+          type="button"
+          class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded border border-[#81938A] text-[#81938A] hover:bg-[#81938A]/10 transition"
+          @click="editMode = true"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+          Edit
         </button>
 
         <!-- Edit mode: Cancel button -->
@@ -922,8 +1317,8 @@
           Cancel
         </button>
 
-        <!-- Plan: save + optional request -->
-        <template v-if="selectedStep === 'plan' && isDraftEditable">
+        <!-- Tab 1 (REQUEST ITR / Plan): save, create, request -->
+        <template v-if="(activeTab === 'request_itr' || isNew) && isDraftEditable">
           <button
             type="button"
             class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded bg-[#81938A] text-white hover:bg-[#6b7a72] transition disabled:opacity-50"
@@ -941,41 +1336,20 @@
             @click="requestInternalInspection"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
-            Request Internal Inspection
+            Request to QC
           </button>
         </template>
 
-        <!-- Internal Inspection view-mode: record (pending) or edit (already saved) -->
+        <!-- Tab 2 (INSPECTION & REPORT): Save button in edit mode -->
         <button
-          v-if="!isNew && selectedStep === 'internal_request' && currentCode === 'request_internal_inspection' && !editMode"
+          v-if="activeTab === 'inspection_report' && isInspectionTabEditable"
           type="button"
-          class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded bg-purple-600 text-white hover:bg-purple-700 transition"
-          @click="confirmInternalInspection"
-        >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-          Record Internal Inspection
-        </button>
-        <!-- Already saved — allow re-editing -->
-        <button
-          v-else-if="!isNew && selectedStep === 'internal_request' && currentCode === 'internal_request' && !editMode"
-          type="button"
-          class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded bg-purple-100 text-purple-700 hover:bg-purple-200 transition"
-          @click="confirmInternalInspection"
-        >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-          Edit Internal Inspection
-        </button>
-
-        <!-- Internal Inspection edit-mode: save + advance status (or just update if already saved) -->
-        <button
-          v-else-if="selectedStep === 'internal_request' && isInternalEditable"
-          type="button"
-          class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded bg-purple-600 text-white hover:bg-purple-700 transition disabled:opacity-50"
-          :disabled="itrStore.loading"
-          @click="submitInternalInspection"
+          class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded bg-[#81938A] text-white hover:bg-[#6b7a72] transition disabled:opacity-50"
+          :disabled="itrStore.loading || uploading"
+          @click="saveInspectionReport"
         >
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
-          {{ currentCode === 'internal_request' ? 'Update Internal Inspection' : 'Save Internal Inspection' }}
+          Save Inspection &amp; Report
         </button>
 
         <!-- Build HTML Report (opens picker) -->
@@ -993,7 +1367,7 @@
 
         <!-- Generate ITR Cover PDF -->
         <button
-          v-if="currentOrder >= 3"
+          v-if="!isNew && currentOrder >= 3"
           type="button"
           class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded bg-indigo-100 text-indigo-700 hover:bg-indigo-200 transition"
           @click="openCoverPdfDialog"
@@ -1003,7 +1377,7 @@
         </button>
 
         <!-- Fill PDF Form — available for all master forms except itr_cover -->
-        <template v-if="currentOrder >= 3 && fillableForms.length > 0">
+        <template v-if="!isNew && currentOrder >= 3 && fillableForms.length > 0">
           <!-- Single form: direct button -->
           <button
             v-if="fillableForms.length === 1"
@@ -1036,91 +1410,17 @@
             </div>
           </div>
         </template>
-
-        <!-- View mode (external_request): Edit (already at external_request status) -->
-        <button
-          v-if="!isNew && selectedStep === 'external_request' && currentCode === 'external_request' && !editMode"
-          type="button"
-          class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded border border-[#81938A] text-[#81938A] hover:bg-[#81938A]/10 transition"
-          @click="editMode = true"
-        >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-          Edit
-        </button>
-
-        <!-- View mode (external_request): Request ITR -->
-        <button
-          v-if="!isNew && selectedStep === 'external_request' && currentCode === 'internal_request' && !editMode"
-          type="button"
-          class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded bg-purple-600 text-white hover:bg-purple-700 transition disabled:opacity-50"
-          :disabled="itrStore.loading"
-          @click="submitForExternalInspection"
-        >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-          Request ITR
-        </button>
-
-        <!-- Request ITR edit-mode: save -->
-        <button
-          v-if="selectedStep === 'external_request' && isExternalEditable"
-          type="button"
-          class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded bg-purple-700 text-white hover:bg-purple-800 transition disabled:opacity-50"
-          :disabled="itrStore.loading"
-          @click="submitExternalInspection"
-        >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
-          Request ITR
-        </button>
-
-        <!-- Report Submitted: submit -->
-        <button
-          v-if="selectedStep === 'report_submitted' && isReportEditable"
-          type="button"
-          class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded bg-cyan-600 text-white hover:bg-cyan-700 transition disabled:opacity-50"
-          :disabled="itrStore.loading"
-          @click="submitReport"
-        >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-          Submit Report
-        </button>
-
-        <!-- Approved: save -->
-        <button
-          v-if="selectedStep === 'approved' && isApprovedEditable"
-          type="button"
-          class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded bg-green-600 text-white hover:bg-green-700 transition disabled:opacity-50"
-          :disabled="itrStore.loading"
-          @click="saveApproved"
-        >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-          Approve ITR
-        </button>
-
-        <!-- Reject to Draft (available when past draft but not yet approved) -->
-        <button
-          v-if="!isNew && currentOrder >= 2 && currentCode !== 'approved'"
-          type="button"
-          class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded bg-red-50 text-red-600 hover:bg-red-100 transition disabled:opacity-50"
-          :disabled="itrStore.loading"
-          @click="doReject"
-        >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
-          Reject to Draft
-        </button>
-
-        <!-- Reject Approved → Draft (System Admin only) -->
-        <button
-          v-if="!isNew && currentCode === 'approved' && authStore.isSystemAdmin"
-          type="button"
-          class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded bg-red-50 text-red-600 hover:bg-red-100 transition disabled:opacity-50"
-          :disabled="itrStore.loading"
-          @click="doReject"
-        >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
-          Reject to Draft
-        </button>
       </div>
     </div>
+
+    <!-- ── To Do Modal (shared component) ───────────────────────────────────────── -->
+    <TaskTodoModal
+      v-model="showTodoModal"
+      :task-id="liveItr?.task_id ?? null"
+      :task-name="liveItr?.title ?? ''"
+      :project-id="liveItr?.project_id ?? null"
+      :itr-id="liveItr?.id ?? null"
+    />
 
     <!-- Snackbar -->
     <div
@@ -1303,15 +1603,15 @@
             :key="itp.id"
             type="button"
             class="w-full text-left px-3 py-2.5 rounded-lg text-sm hover:bg-[#81938A]/10 transition mb-0.5"
-            :class="(itpPickerTarget === 'internal' ? internalForm.itp_id : draftForm.itp_id) === itp.id ? 'bg-[#81938A]/15 ring-1 ring-[#81938A]/40' : ''"
-            @click="itpPickerTarget === 'internal' ? (internalForm.itp_id = itp.id) : (draftForm.itp_id = itp.id); itpPickerOpen = false"
+            :class="(itpPickerTarget === 'request' ? requestForm.req_itp_id : itpPickerTarget === 'internal' ? internalForm.itp_id : draftForm.itp_id) === itp.id ? 'bg-[#81938A]/15 ring-1 ring-[#81938A]/40' : ''"
+            @click="itpPickerTarget === 'request' ? (requestForm.req_itp_id = itp.id) : itpPickerTarget === 'internal' ? (internalForm.itp_id = itp.id) : (draftForm.itp_id = itp.id); itpPickerOpen = false"
           >
             <div class="flex items-start gap-2">
               <div class="flex-1 min-w-0">
                 <span class="font-semibold text-gray-800">{{ itp.doc_no }}</span>
                 <span class="text-gray-500 ml-1">— {{ itp.title }}</span>
               </div>
-              <svg v-if="(itpPickerTarget === 'internal' ? internalForm.itp_id : draftForm.itp_id) === itp.id" class="w-4 h-4 text-[#81938A] shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg v-if="(itpPickerTarget === 'request' ? requestForm.req_itp_id : itpPickerTarget === 'internal' ? internalForm.itp_id : draftForm.itp_id) === itp.id" class="w-4 h-4 text-[#81938A] shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
               </svg>
             </div>
@@ -1559,6 +1859,7 @@ import { useItpChecklistStore, type ItpHtmlChecklist } from '@/stores/itpCheckli
 import { useItrChecklistSelectionStore } from '@/stores/itrChecklistSelectionStore'
 
 import AttachmentList from '@/components/itr/AttachmentList.vue'
+import TaskTodoModal from '@/components/task/TaskTodoModal.vue'
 import FileUploadArea from '@/components/itr/FileUploadArea.vue'
 import DateTimePicker from '@/components/DateTimePicker.vue'
 import PDFFormViewer from '@/components/PDFFormViewer.vue'
@@ -1610,6 +1911,7 @@ const itrSnapshots = ref<Record<string, ItrFormSnapshot>>({})
 
 // ── Report viewer state ─────────────────────────────────────────────────────
 const showReportPicker = ref(false)
+const showReportModal  = ref(false)
 const pickerDataMap    = ref<Record<string, string>>({})
 
 // ── Comments panel ───────────────────────────────────────────────────────────────
@@ -1649,14 +1951,23 @@ const draftByName = computed<string>(() => {
 // ── Snackbar ──────────────────────────────────────────────────────────────────
 
 const snackbar = reactive({ show: false, text: '', color: 'success' as string })
+
+// ── To Do modal ──────────────────────────────────────────────────────────────
+
+const showTodoModal = ref(false)
+
+function openTodoDialog() {
+  showTodoModal.value = true
+}
 const showSnack = (text: string, color = 'success') => Object.assign(snackbar, { show: true, text, color })
 
 // ── Status helpers ────────────────────────────────────────────────────────────
 
 const STATUS_ORDER: Record<string, number> = {
   plan: 1,
-  request_internal_inspection: 2,
-  internal_request: 3,
+  request_qc: 2,
+  request_internal_inspection: 2,  // legacy alias
+  internal_request: 3,              // legacy alias
   external_request: 4,
   report_submitted: 5,
   approved: 6,
@@ -1673,26 +1984,26 @@ const currentOrder = computed<number>(() =>
 // ── Progress stepper ──────────────────────────────────────────────────────────
 
 const PROGRESS_STEPS = [
-  { code: 'plan',              label: 'Plan',                 icon: 'mdi-clipboard-list-outline', color: '#64748B' },
-  { code: 'internal_request',  label: 'Internal Inspection',  icon: 'mdi-send-outline',          color: '#2563EB' },
-  { code: 'external_request',  label: 'Request ITR',          icon: 'mdi-send-check-outline',    color: '#7C3AED' },
-  { code: 'report_submitted',  label: 'Report Submitted',     icon: 'mdi-file-check-outline',    color: '#0891B2' },
-  { code: 'approved',          label: 'Approved',             icon: 'mdi-check-circle-outline',  color: '#059669' },
+  { code: 'plan',              label: 'Plan',             icon: 'mdi-clipboard-list-outline', color: '#64748B' },
+  { code: 'request_qc',       label: 'Requested to QC',  icon: 'mdi-clock-check-outline',    color: '#1D4ED8' },
+  { code: 'external_request',  label: 'Request ITR',      icon: 'mdi-send-check-outline',    color: '#7C3AED' },
+  { code: 'report_submitted',  label: 'Report Submitted', icon: 'mdi-file-check-outline',    color: '#0891B2' },
+  { code: 'approved',          label: 'Approved',         icon: 'mdi-check-circle-outline',  color: '#059669' },
 ] as const
 
 // Minimum currentOrder required to click each step
 const STEP_MIN_ORDER: Record<string, number> = {
   plan: 1,
-  internal_request: 2,    // request_internal_inspection threshold
-  external_request: 3,    // internal_request threshold
-  report_submitted: 4,    // external_request threshold
-  approved: 5,            // report_submitted threshold
+  request_qc: 2,          // accessible when at request_qc
+  external_request: 2,    // accessible from request_qc onward (pre-fill)
+  report_submitted: 4,    // accessible when at external_request
+  approved: 5,            // accessible when at report_submitted
 }
 
 // Complete = ITR has moved past this step's range
 const STEP_COMPLETE_ORDER: Record<string, number> = {
-  plan: 2,                 // complete when >= request_internal_inspection (order 2)
-  internal_request: 4,     // complete when >= external_request (order 4)
+  plan: 2,                 // complete when >= request_qc (order 2)
+  request_qc: 4,           // complete when >= external_request (order 4)
   external_request: 5,     // complete when >= report_submitted (order 5)
   report_submitted: 6,     // complete when >= approved (order 6)
   approved: 999,
@@ -1718,12 +2029,15 @@ const selectedStep = ref<string>('plan')
 // Track whether the user has manually picked a step (don't override with auto-derive)
 const userPickedStep = ref(false)
 
+// ── Active tab (REQUEST ITR | INSPECTION & REPORT) ────────────────────────────
+const activeTab = ref<'request_itr' | 'inspection_report'>('request_itr')
+
 const selectStep = (code: string) => {
   userPickedStep.value = true
   selectedStep.value = code
   // Auto-enter edit mode on Request ITR step when status is still 'internal_request'
   // (form has never been filled yet — open ready to edit)
-  if (code === 'external_request' && currentCode.value === 'internal_request') {
+  if (code === 'external_request' && (currentCode.value === 'request_qc' || currentCode.value === 'internal_request')) {
     editMode.value = true
   } else {
     editMode.value = false  // always return to view mode when changing steps
@@ -1733,8 +2047,9 @@ const selectStep = (code: string) => {
 // Default step based on ITR status
 const deriveDefaultStep = (code: ItrStatusCode | null): string => {
   switch (code) {
-    case 'request_internal_inspection': return 'internal_request'
-    case 'internal_request':            return 'internal_request'
+    case 'request_qc':                  return 'request_qc'
+    case 'request_internal_inspection': return 'request_qc'   // legacy
+    case 'internal_request':            return 'external_request'  // legacy
     case 'external_request':            return 'external_request'
     case 'report_submitted':            return 'report_submitted'
     case 'approved':                    return 'approved'
@@ -1750,6 +2065,7 @@ const deriveDefaultStep = (code: ItrStatusCode | null): string => {
 watch(currentCode, (newCode, oldCode) => {
   if (oldCode === null && newCode !== null && !userPickedStep.value) {
     selectedStep.value = deriveDefaultStep(newCode)
+    activeTab.value = newCode === 'plan' ? 'request_itr' : 'inspection_report'
   }
 })
 
@@ -1763,21 +2079,30 @@ const canEditCurrentStep = computed(() => {
   if (isNew.value) return true
   switch (selectedStep.value) {
     case 'plan':             return currentCode.value === 'plan'
-    case 'internal_request': return currentCode.value === 'internal_request'
-    case 'external_request': return currentCode.value === 'internal_request'
+    case 'request_qc':      return currentCode.value === 'request_qc' || currentCode.value === 'request_internal_inspection'
+    case 'internal_request': return currentCode.value === 'internal_request'  // legacy
+    case 'external_request': return currentCode.value === 'request_qc' || currentCode.value === 'internal_request'
     case 'report_submitted': return currentCode.value === 'external_request' || currentCode.value === 'report_submitted'
     case 'approved':         return currentCode.value === 'report_submitted' || currentCode.value === 'approved'
     default: return false
   }
 })
 
-const isDraftEditable    = computed(() => isNew.value || (currentCode.value === 'plan' && editMode.value))
+const isDraftEditable    = computed(() => isNew.value || editMode.value)
+
+/** True when the current user is the one who created this ITR (restricts REQUEST ITR editing) */
+const isItrCreator = computed(() =>
+  isNew.value || !liveItr.value?.created_by || liveItr.value.created_by === authStore.userId
+)
 const isInternalEditable = computed(() =>
-  (currentCode.value === 'request_internal_inspection' || currentCode.value === 'internal_request') && editMode.value
+  (currentCode.value === 'request_qc' || currentCode.value === 'request_internal_inspection' || currentCode.value === 'internal_request') && editMode.value
 )
 const isExternalEditable = computed(() => (currentCode.value === 'internal_request' || currentCode.value === 'external_request') && editMode.value)
 const isReportEditable   = computed(() => (currentCode.value === 'external_request' || currentCode.value === 'report_submitted') && editMode.value)
 const isApprovedEditable = computed(() => (currentCode.value === 'report_submitted' || currentCode.value === 'approved') && editMode.value)
+
+// Combined Inspection & Report tab — editable whenever editMode is on and ITR exists
+const isInspectionTabEditable = computed(() => !isNew.value && editMode.value)
 
 // ── Form data ─────────────────────────────────────────────────────────────────
 
@@ -1795,6 +2120,17 @@ const draftForm = reactive({
   planned_inspection_date: '',
   drawing_number: '',
   revision_number: '',
+})
+
+// REQUEST ITR tab form — stored in req_* columns; does NOT affect reports
+const requestForm = reactive({
+  req_title: '', req_itr_number: '', req_itr_type_id: null as string | null,
+  req_discipline_id: null as string | null, req_task_id: null as string | null,
+  req_area_ids: [] as string[], req_itp_id: null as string | null,
+  req_location: '', req_notes: '',
+  req_planned_inspection_date: '',
+  req_drawing_number: '',
+  req_revision_number: '',
 })
 
 const internalForm = reactive({
@@ -1843,6 +2179,21 @@ watch(
         drawing_number: itr.drawing_number ?? '',
         revision_number: itr.revision_number ?? '',
       })
+      // requestForm: load req_* columns; fall back to core columns for old/existing ITRs
+      Object.assign(requestForm, {
+        req_title:                   itr.req_title                   ?? itr.title ?? '',
+        req_itr_number:              itr.req_itr_number              ?? itr.itr_number ?? '',
+        req_itr_type_id:             itr.req_itr_type_id             ?? itr.itr_type_id ?? null,
+        req_discipline_id:           itr.req_discipline_id           ?? itr.discipline_id ?? null,
+        req_task_id:                 itr.req_task_id                 ?? itr.task_id ?? null,
+        req_area_ids:                itr.req_area_ids?.length        ? itr.req_area_ids : (itr.area_ids ?? []),
+        req_itp_id:                  itr.req_itp_id                  ?? itr.itp_id ?? null,
+        req_location:                itr.req_location                ?? itr.location ?? '',
+        req_notes:                   itr.req_notes                   ?? itr.notes ?? '',
+        req_planned_inspection_date: itr.req_planned_inspection_date ?? itr.planned_inspection_date ?? '',
+        req_drawing_number:          itr.req_drawing_number          ?? itr.drawing_number ?? '',
+        req_revision_number:         itr.req_revision_number         ?? itr.revision_number ?? '',
+      })
       Object.assign(internalForm, {
         itr_number: itr.itr_number ?? '',
         req_inspection_date: itr.req_inspection_date ?? itr.planned_inspection_date ?? '',
@@ -1867,8 +2218,10 @@ watch(
         qc_notes: itr.qc_notes ?? '',
       })
       selectedStep.value = deriveDefaultStep(itrStatusStore.getCode(itr.status_id))
+      activeTab.value = itrStatusStore.getCode(itr.status_id) === 'plan' ? 'request_itr' : 'inspection_report'
       localMaterialIds.value = (itr.itr_materials ?? []).map(im => im.material_id)
       localQcUserIds.value   = (itr.qc_assignments ?? []).map(a => a.user_id)
+      localStatusId.value    = itr.status_id ?? null
       userPickedStep.value = false   // allow auto-correct if statuses arrive after this
       // Only re-fetch checklist selections when opening a different ITR.
       // Skipping the fetch when the same ITR is refreshed (e.g. after save)
@@ -1895,10 +2248,17 @@ watch(
         task_id: null, area_ids: [], itp_id: null, location: '', notes: '', planned_inspection_date: '',
         drawing_number: '', revision_number: '',
       })
+      Object.assign(requestForm, {
+        req_title: '', req_itr_number: '', req_itr_type_id: null, req_discipline_id: null,
+        req_task_id: null, req_area_ids: [], req_itp_id: null, req_location: '', req_notes: '',
+        req_planned_inspection_date: '', req_drawing_number: '', req_revision_number: '',
+      })
       draftChecklistIds.value = []
       localMaterialIds.value = []
       localQcUserIds.value = []
+      localStatusId.value  = null
       selectedStep.value = 'plan'
+      activeTab.value = 'request_itr'
       userPickedStep.value = false
     }
   },
@@ -2030,16 +2390,29 @@ watch(() => draftForm.itp_id, (id) => {
   if (id) itpChecklistStore.fetchChecklists(id)
 })
 
+/** Checklists from REQUEST ITR tab's linked ITP */
+const checklistsForLinkedItpReq = computed<ItpHtmlChecklist[]>(() =>
+  requestForm.req_itp_id ? itpChecklistStore.forItp(requestForm.req_itp_id) : []
+)
+const unselectedLinkedChecklistsReq = computed(() =>
+  checklistsForLinkedItpReq.value.filter(c => !draftChecklistIds.value.includes(c.id))
+)
+watch(() => requestForm.req_itp_id, (id) => {
+  if (id) itpChecklistStore.fetchChecklists(id)
+})
+
 // ── ITP Picker ────────────────────────────────────────────────────────────────
 
 const itpPickerOpen   = ref(false)
 const itpPickerDisc   = ref<string | null>(null)
 const itpPickerSearch = ref('')
-const itpPickerTarget = ref<'draft' | 'internal'>('draft')
+const itpPickerTarget = ref<'draft' | 'internal' | 'request'>('draft')
 
-const openItpPicker = (target: 'draft' | 'internal' = 'draft') => {
+const openItpPicker = (target: 'draft' | 'internal' | 'request' = 'draft') => {
   itpPickerTarget.value = target
-  itpPickerDisc.value   = (target === 'internal' ? liveItr.value?.discipline_id : draftForm.discipline_id) ?? null
+  itpPickerDisc.value   = (target === 'internal' ? liveItr.value?.discipline_id
+    : target === 'request' ? requestForm.req_discipline_id
+    : draftForm.discipline_id) ?? null
   itpPickerSearch.value = ''
   itpPickerOpen.value   = true
 }
@@ -2058,6 +2431,12 @@ const itpSelectedLabel = computed(() => {
   return p ? `${p.doc_no} — ${p.title}` : ''
 })
 
+const reqItpSelectedLabel = computed(() => {
+  if (!requestForm.req_itp_id) return ''
+  const p = itpStore.itps.find(x => x.id === requestForm.req_itp_id)
+  return p ? `${p.doc_no} — ${p.title}` : ''
+})
+
 const itpInternalSelectedLabel = computed(() => {
   if (!internalForm.itp_id) return ''
   const p = itpStore.itps.find(x => x.id === internalForm.itp_id)
@@ -2067,6 +2446,7 @@ const itpInternalSelectedLabel = computed(() => {
 // ── Multi-material list ────────────────────────────────────────────────────
 const localMaterialIds  = ref<string[]>([])
 const localQcUserIds    = ref<string[]>([])
+const localStatusId     = ref<string | null>(null)
 const materialSearch    = ref('')
 const materialDropOpen  = ref(false)
 const matFilterByDisc   = ref(true)
@@ -2075,8 +2455,8 @@ const matPickerOpen     = ref(false)
 const matPickerDisc     = ref<string | null>(null)
 const matPickerSearch   = ref('')
 
-const openMatPicker = () => {
-  matPickerDisc.value   = draftForm.discipline_id ?? null
+const openMatPicker = (fromRequest = false) => {
+  matPickerDisc.value   = fromRequest ? requestForm.req_discipline_id ?? null : draftForm.discipline_id ?? null
   matPickerSearch.value = ''
   matPickerOpen.value   = true
 }
@@ -2148,7 +2528,7 @@ const qcMemberRoleBadge = (m: { project_roles?: string[] }): string => {
 }
 
 const isMatType = computed(() => {
-  const id = draftForm.itr_type_id ?? liveItr.value?.itr_type_id
+  const id = requestForm.req_itr_type_id ?? draftForm.itr_type_id ?? liveItr.value?.itr_type_id
   if (!id) return false
   const t = itrTypeStore.itrTypes.find(x => x.id === id)
   return t?.code?.toUpperCase() === 'MAT'
@@ -2171,6 +2551,13 @@ const getAttachments = (category: AttachmentCategory, stageCode?: string): ItrAt
 
 // Plan-stage existing attachments (for edit/delete in edit mode)
 const draftStatusId = computed(() => itrStatusStore.getByCode('plan')?.id ?? null)
+
+/** Statuses available in INSPECTION & REPORT tab — excludes Plan and Requested to QC */
+const inspectionStatuses = computed(() =>
+  itrStatusStore.statuses.filter(s =>
+    s.code !== 'plan' && s.code !== 'request_qc' && s.code !== 'request_internal_inspection'
+  ).sort((a, b) => a.sort_order - b.sort_order)
+)
 const existingDrawings = computed(() =>
   liveItr.value?.itr_attachments.filter(a => a.category === 'drawing' && a.status_id === draftStatusId.value) ?? []
 )
@@ -2191,15 +2578,19 @@ const pendingDrawings   = ref<File[]>([])
 const pendingDOs        = ref<File[]>([])
 const pendingAdditional = ref<File[]>([])
 // Internal Inspection stage pending files
-const pendingInternalDrawings = ref<File[]>([])
-const pendingInternalImages   = ref<File[]>([])
+const pendingInternalDrawings   = ref<File[]>([])
+const pendingInternalImages     = ref<File[]>([])
+const pendingInternalDOs        = ref<File[]>([])
+const pendingInternalAdditional = ref<File[]>([])
 const uploading         = ref(false)
 
 const drawingInputRef    = ref<HTMLInputElement | null>(null)
 const doInputRef         = ref<HTMLInputElement | null>(null)
 const additionalInputRef = ref<HTMLInputElement | null>(null)
-const internalDrawingInputRef = ref<HTMLInputElement | null>(null)
-const internalImageInputRef   = ref<HTMLInputElement | null>(null)
+const internalDrawingInputRef   = ref<HTMLInputElement | null>(null)
+const internalImageInputRef     = ref<HTMLInputElement | null>(null)
+const internalDoInputRef        = ref<HTMLInputElement | null>(null)
+const internalAdditionalInputRef = ref<HTMLInputElement | null>(null)
 
 // FileUploadArea component refs — used to trigger pending uploads when Save is clicked
 const extDrawingUploadRef = ref<InstanceType<typeof FileUploadArea> | null>(null)
@@ -2247,33 +2638,53 @@ const saveDraft = async () => {
   // Auto-generate internal item_no on first save (never overwrite if already set)
   let itemNo: string | null = liveItr.value?.item_no ?? null
   if (!itemNo && isNew.value) {
-    const disc     = disciplineStore.getById(draftForm.discipline_id)
+    const disc     = disciplineStore.getById(requestForm.req_discipline_id)
     const discCode = (disc?.code ?? 'GEN').toUpperCase()
-    const typeCode = (itrTypeStore.getById(draftForm.itr_type_id)?.code ?? '').toUpperCase()
+    const typeCode = (itrTypeStore.getById(requestForm.req_itr_type_id)?.code ?? '').toUpperCase()
     itemNo = await itrStore.generateItrNumber(project.id, discCode, typeCode === 'MAT')
   }
 
-  const payload = {
-    title:                   draftForm.title.trim(),
+  // req_* fields always saved (REQUEST ITR tab = preserved separately)
+  const reqFields = {
+    req_title:                   requestForm.req_title.trim() || null,
+    req_itr_number:              requestForm.req_itr_number.trim() || null,
+    req_itr_type_id:             requestForm.req_itr_type_id || null,
+    req_discipline_id:           requestForm.req_discipline_id || null,
+    req_task_id:                 requestForm.req_task_id || null,
+    req_area_ids:                requestForm.req_area_ids,
+    req_itp_id:                  requestForm.req_itp_id || null,
+    req_location:                requestForm.req_location.trim() || null,
+    req_notes:                   requestForm.req_notes.trim() || null,
+    req_planned_inspection_date: requestForm.req_planned_inspection_date || null,
+    req_drawing_number:          requestForm.req_drawing_number.trim() || null,
+    req_revision_number:         requestForm.req_revision_number.trim() || null,
+  }
+
+  // For new ITRs: also populate core columns (INSPECTION & REPORT not filled yet)
+  // For existing ITRs: only save req_* — core columns are owned by INSPECTION & REPORT tab
+  const payload = isNew.value ? {
+    title:                   requestForm.req_title.trim(),
     item_no:                 itemNo,
-    itr_number:              draftForm.itr_number.trim() || null,
-    itr_type_id:             draftForm.itr_type_id || null,
-    discipline_id:           draftForm.discipline_id || null,
-    task_id:                 draftForm.task_id || null,
-    area_id:                 draftForm.area_ids[0] || null,
-    area_ids:                draftForm.area_ids,
-    itp_id:                  draftForm.itp_id || null,
-    location:                draftForm.location.trim() || null,
-    notes:                   draftForm.notes.trim() || null,
-    planned_inspection_date: draftForm.planned_inspection_date || null,
-    drawing_number:          draftForm.drawing_number.trim() || null,
-    revision_number:         draftForm.revision_number.trim() || null,
+    itr_number:              requestForm.req_itr_number.trim() || null,
+    itr_type_id:             requestForm.req_itr_type_id || null,
+    discipline_id:           requestForm.req_discipline_id || null,
+    task_id:                 requestForm.req_task_id || null,
+    area_id:                 requestForm.req_area_ids[0] || null,
+    area_ids:                requestForm.req_area_ids,
+    itp_id:                  requestForm.req_itp_id || null,
+    location:                requestForm.req_location.trim() || null,
+    notes:                   requestForm.req_notes.trim() || null,
+    planned_inspection_date: requestForm.req_planned_inspection_date || null,
+    drawing_number:          requestForm.req_drawing_number.trim() || null,
+    revision_number:         requestForm.req_revision_number.trim() || null,
     status_id:               draftStatus?.id ?? null,
-    // Only stamp draft_by/draft_at on first creation; preserve original on edits
-    ...(isNew.value ? {
-      draft_by: authStore.userId,
-      draft_at: new Date().toISOString(),
-    } : {}),
+    draft_by:                authStore.userId,
+    draft_at:                new Date().toISOString(),
+    ...reqFields,
+  } : {
+    // Existing ITR: only update req_* columns
+    item_no: itemNo,
+    ...reqFields,
   }
 
   let result: ITR | null = null
@@ -2342,26 +2753,41 @@ const saveDraft = async () => {
   emit('saved', result)
 }
 
-/** Save plan form AND advance status to request_internal_inspection */
+/** Save plan form AND advance status to request_qc (Requested to QC) */
 const requestInternalInspection = async () => {
   if (!liveItr.value) return
   if (!draftFormRef.value?.reportValidity()) return
 
-  // First save any form edits
+  // Save REQUEST ITR data to req_* columns
+  // AND copy to core columns so INSPECTION & REPORT tab starts pre-populated
   const saved = await itrStore.updateITR(liveItr.value.id, {
-    title:                   draftForm.title.trim(),
-    itr_number:              draftForm.itr_number.trim() || null,
-    itr_type_id:             draftForm.itr_type_id || null,
-    discipline_id:           draftForm.discipline_id || null,
-    task_id:                 draftForm.task_id || null,
-    area_id:                 draftForm.area_ids[0] || null,
-    area_ids:                draftForm.area_ids,
-    itp_id:                  draftForm.itp_id || null,
-    location:                draftForm.location.trim() || null,
-    notes:                   draftForm.notes.trim() || null,
-    planned_inspection_date: draftForm.planned_inspection_date || null,
-    drawing_number:          draftForm.drawing_number.trim() || null,
-    revision_number:         draftForm.revision_number.trim() || null,
+    // req_* columns (preserved audit trail of the original request)
+    req_title:                   requestForm.req_title.trim() || null,
+    req_itr_number:              requestForm.req_itr_number.trim() || null,
+    req_itr_type_id:             requestForm.req_itr_type_id || null,
+    req_discipline_id:           requestForm.req_discipline_id || null,
+    req_task_id:                 requestForm.req_task_id || null,
+    req_area_ids:                requestForm.req_area_ids,
+    req_itp_id:                  requestForm.req_itp_id || null,
+    req_location:                requestForm.req_location.trim() || null,
+    req_notes:                   requestForm.req_notes.trim() || null,
+    req_planned_inspection_date: requestForm.req_planned_inspection_date || null,
+    req_drawing_number:          requestForm.req_drawing_number.trim() || null,
+    req_revision_number:         requestForm.req_revision_number.trim() || null,
+    // Core columns: initial copy from request so INSPECTION & REPORT tab is pre-populated
+    title:                   requestForm.req_title.trim() || liveItr.value.title,
+    itr_number:              requestForm.req_itr_number.trim() || null,
+    itr_type_id:             requestForm.req_itr_type_id || null,
+    discipline_id:           requestForm.req_discipline_id || null,
+    task_id:                 requestForm.req_task_id || null,
+    area_id:                 requestForm.req_area_ids[0] || null,
+    area_ids:                requestForm.req_area_ids,
+    itp_id:                  requestForm.req_itp_id || null,
+    location:                requestForm.req_location.trim() || null,
+    notes:                   requestForm.req_notes.trim() || null,
+    planned_inspection_date: requestForm.req_planned_inspection_date || null,
+    drawing_number:          requestForm.req_drawing_number.trim() || null,
+    revision_number:         requestForm.req_revision_number.trim() || null,
   })
   if (!saved) { showSnack(itrStore.error ?? 'Save failed', 'error'); return }
   await clearDataKeysFromFormData(saved)
@@ -2369,15 +2795,15 @@ const requestInternalInspection = async () => {
   // Sync QC assignments
   await itrStore.syncItrQcAssignments(saved.id, localQcUserIds.value)
 
-  // Sync checklist selections (same as saveDraft — user may have changed them in edit mode)
+  // Sync checklist selections
   await itrChecklistSelectionStore.syncSelections(saved.id, draftChecklistIds.value)
 
-  // Advance status: draft → request_internal_inspection
+  // Advance status: plan → request_qc (Requested to QC)
   const ok = await itrStore.advanceStatus(liveItr.value.id, authStore.userId ?? '')
   if (ok) {
     editMode.value = false
-    showSnack('Internal Inspection requested — proceed to Internal Inspection tab')
-    selectedStep.value = 'internal_request'
+    showSnack('Requested to QC — proceed to Inspection & Report tab')
+    selectedStep.value = 'request_qc'
   } else {
     showSnack(itrStore.error ?? 'Advance failed', 'error')
   }
@@ -2388,8 +2814,8 @@ const submitPlanForInternalInspection = async () => {
   if (!liveItr.value) return
   const ok = await itrStore.advanceStatus(liveItr.value.id, authStore.userId ?? '')
   if (ok) {
-    showSnack('Submitted for Internal Inspection')
-    selectedStep.value = 'internal_request'
+    showSnack('Requested to QC')
+    selectedStep.value = 'request_qc'
   } else {
     showSnack(itrStore.error ?? 'Advance failed', 'error')
   }
@@ -2556,9 +2982,79 @@ const doReject = async () => {
   if (ok) {
     showSnack('Sent back to Plan')
     selectedStep.value = 'plan'
+    activeTab.value = 'request_itr'
   } else {
     showSnack(itrStore.error ?? 'Reject failed', 'error')
   }
+}
+
+/** Save combined Inspection & Report tab (all shared fields + inspection-exclusive fields) */
+const saveInspectionReport = async () => {
+  if (!liveItr.value) return
+
+  // Snapshot material IDs before any awaits (watcher may reset them after updateITR)
+  const pendingMaterialIds = [...localMaterialIds.value]
+
+  const saved = await itrStore.updateITR(liveItr.value.id, {
+    title:                   draftForm.title.trim() || liveItr.value.title,
+    itr_number:              draftForm.itr_number.trim() || null,
+    itr_type_id:             draftForm.itr_type_id || null,
+    status_id:               localStatusId.value || liveItr.value.status_id,
+    discipline_id:           draftForm.discipline_id || null,
+    task_id:                 draftForm.task_id || null,
+    area_id:                 draftForm.area_ids[0] || null,
+    area_ids:                draftForm.area_ids,
+    itp_id:                  draftForm.itp_id || null,
+    location:                draftForm.location.trim() || null,
+    planned_inspection_date: draftForm.planned_inspection_date || null,
+    drawing_number:          draftForm.drawing_number.trim() || null,
+    revision_number:         draftForm.revision_number.trim() || null,
+    req_inspection_date:     internalForm.req_inspection_date || null,
+    itr_request_file_link:   externalForm.itr_request_file_link.trim() || null,
+    inspection_date:         reportForm.inspection_date || null,
+    itr_report_file_link:    reportForm.itr_report_file_link.trim() || null,
+    qc_notes:                internalForm.qc_notes.trim() || null,
+  })
+  if (!saved) { showSnack(itrStore.error ?? 'Save failed', 'error'); return }
+  await clearDataKeysFromFormData(saved)
+
+  // Sync material links
+  const existingMats = liveItr.value?.itr_materials ?? []
+  const existingMids = existingMats.map(im => im.material_id)
+  const matsToAdd    = pendingMaterialIds.filter(id => !existingMids.includes(id))
+  const matsToRemove = existingMats.filter(im => !pendingMaterialIds.includes(im.material_id))
+  await Promise.all([
+    ...matsToAdd.map(mid => itrStore.addItrMaterial(saved.id, mid)),
+    ...matsToRemove.map(im => itrStore.removeItrMaterial(saved.id, im.id)),
+  ])
+
+  // Sync QC assignments
+  await itrStore.syncItrQcAssignments(saved.id, localQcUserIds.value)
+
+  // Sync checklist selections
+  await itrChecklistSelectionStore.syncSelections(saved.id, draftChecklistIds.value)
+
+  // Upload pending inspection attachments
+  const internalStatusId = itrStatusStore.getByCode('internal_request')?.id ?? null
+  const totalFiles = pendingInternalDrawings.value.length + pendingInternalDOs.value.length + pendingInternalAdditional.value.length
+  if (totalFiles > 0) {
+    uploading.value = true
+    const userId = authStore.userId
+    for (const file of pendingInternalDrawings.value)
+      await itrStore.addAttachment(saved, file, userId, 'drawing', internalStatusId)
+    for (const file of pendingInternalDOs.value)
+      await itrStore.addAttachment(saved, file, userId, 'do', internalStatusId)
+    for (const file of pendingInternalAdditional.value)
+      await itrStore.addAttachment(saved, file, userId, 'additional', internalStatusId)
+    pendingInternalDrawings.value = []
+    pendingInternalDOs.value = []
+    pendingInternalAdditional.value = []
+    uploading.value = false
+  }
+
+  editMode.value = false
+  showSnack('Inspection & Report saved')
+  emit('updated')
 }
 
 // ══ PDF Form Viewer (generic — works for any master form) ══════════════
@@ -2845,6 +3341,13 @@ const close = () => {
     pendingAdditional.value = []
     pendingInternalDrawings.value = []
     pendingInternalImages.value = []
+    pendingInternalDOs.value = []
+    pendingInternalAdditional.value = []
+    Object.assign(requestForm, {
+      req_title: '', req_itr_number: '', req_itr_type_id: null, req_discipline_id: null,
+      req_task_id: null, req_area_ids: [], req_itp_id: null, req_location: '', req_notes: '',
+      req_planned_inspection_date: '', req_drawing_number: '', req_revision_number: '',
+    })
   })
 }
 

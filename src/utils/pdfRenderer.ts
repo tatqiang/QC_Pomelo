@@ -134,23 +134,23 @@ export async function renderPageToHtml(
     * { margin: 0; padding: 0; box-sizing: border-box; }
     @page { size: ${widthMm}mm ${heightMm}mm; margin: 0; }
     html, body {
-      width: ${widthMm}mm;
-      height: ${heightMm}mm;
+      width: 100%;
+      height: 100%;
       overflow: hidden;
       background: #fff;
     }
     .page {
-      width: ${widthMm}mm;
-      height: ${heightMm}mm;
+      width: 100%;
+      height: 100%;
       display: flex;
       align-items: center;
       justify-content: center;
       overflow: hidden;
     }
     .page img {
-      width: ${widthMm}mm;
-      height: ${heightMm}mm;
-      object-fit: fill;
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
       display: block;
     }
   </style>

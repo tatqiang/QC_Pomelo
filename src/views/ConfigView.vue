@@ -185,6 +185,15 @@ const lookupItems = [
     disabled: false,
   },
   {
+    label: 'ITR Statuses',
+    description: 'Customise status labels, colours and icons per project',
+    iconPath: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
+    bgClass: 'bg-teal-50',
+    iconClass: 'text-teal-600',
+    to: '/itr-statuses',
+    disabled: false,
+  },
+  {
     label: 'ITPs',
     description: 'Inspection & Test Plans template library',
     iconPath: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',

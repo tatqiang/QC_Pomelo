@@ -88,6 +88,19 @@ export interface ITR {
     report_submitted_at: string | null
     approved_by: string | null
     approved_at: string | null
+    // REQUEST ITR tab scalar fields (preserved separately from core inspection data)
+    req_title: string | null
+    req_itr_number: string | null
+    req_itr_type_id: string | null
+    req_discipline_id: string | null
+    req_task_id: string | null
+    req_area_ids: string[]
+    req_itp_id: string | null
+    req_location: string | null
+    req_drawing_number: string | null
+    req_revision_number: string | null
+    req_planned_inspection_date: string | null
+    req_notes: string | null
     // Legacy fields
     submitted_at: string | null
     submitted_by: string | null
@@ -373,7 +386,7 @@ export const useItrStore = defineStore('itr', () => {
 
         // Build per-state tracking update
         const stateUpdate: ItrUpdate = { status_id: nextStatus.id }
-        if (code === 'internal_request') {
+        if (code === 'request_qc' || code === 'internal_request') {
             stateUpdate.internal_request_by = userId
             stateUpdate.internal_request_at = now
         } else if (code === 'external_request') {

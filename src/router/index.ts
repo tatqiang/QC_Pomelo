@@ -52,6 +52,11 @@ const routes: RouteRecordRaw[] = [
                 component: () => import('@/views/ITRTypesView.vue'),
             },
             {
+                path: 'itr-statuses',
+                name: 'itr-statuses',
+                component: () => import('@/views/ITRStatusesView.vue'),
+            },
+            {
                 path: 'gantt',
                 name: 'gantt',
                 component: () => import('@/views/GanttView.vue'),

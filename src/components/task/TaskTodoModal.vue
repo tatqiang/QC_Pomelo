@@ -4,7 +4,7 @@
     class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
     @mousedown.self="$emit('update:modelValue', false)"
   >
-    <div class="bg-white rounded-lg shadow-xl w-full max-w-xl max-h-[90vh] flex flex-col">
+    <div class="relative bg-white rounded-lg shadow-xl w-full max-w-xl max-h-[90vh] flex flex-col">
 
       <!-- ── Header ──────────────────────────────────────────────────── -->
       <div class="flex items-center gap-3 px-5 py-4 border-b border-gray-100">
@@ -61,6 +61,8 @@
             v-for="todo in todoStore.todos"
             :key="todo.id"
             class="group px-5 py-3 hover:bg-gray-50/60 transition"
+            @mouseenter="hoveredTodoId = todo.id"
+            @mouseleave="hoveredTodoId = null"
           >
             <div v-if="editingId !== todo.id" class="flex items-start gap-3">
               <!-- Checkbox -->
@@ -120,9 +122,28 @@
                 </div>
 
                 <!-- Files / links section -->
-                <div v-if="todo.task_todo_files && todo.task_todo_files.length > 0" class="mt-2 space-y-1">
+                <div v-if="todo.task_todo_files && todo.task_todo_files.length > 0" class="mt-2 space-y-1.5">
+                  <!-- Image thumbnails grid -->
+                  <div v-if="todo.task_todo_files.some(f => f.file_type?.startsWith('image/'))" class="flex flex-wrap gap-1.5">
+                    <div
+                      v-for="f in todo.task_todo_files.filter(f => f.file_type?.startsWith('image/'))"
+                      :key="f.id"
+                      class="relative group/thumb flex-shrink-0"
+                    >
+                      <a :href="f.file_url" target="_blank" rel="noopener" @click.stop>
+                        <img :src="f.file_url" :title="f.file_name"
+                          class="w-16 h-16 rounded object-cover border border-gray-200 hover:border-[#81938A] transition" />
+                      </a>
+                      <button
+                        class="absolute top-0.5 right-0.5 opacity-0 group-hover/thumb:opacity-100 transition bg-black/60 hover:bg-red-600 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] leading-none"
+                        title="Remove"
+                        @click.stop="todoStore.deleteFile(f.id, todo.id)"
+                      >&times;</button>
+                    </div>
+                  </div>
+                  <!-- Non-image file rows -->
                   <div
-                    v-for="f in todo.task_todo_files"
+                    v-for="f in todo.task_todo_files.filter(f => !f.file_type?.startsWith('image/'))"
                     :key="f.id"
                     class="flex items-center gap-1.5 group/file"
                   >
@@ -243,6 +264,82 @@
                 <input v-model="editForm.link" type="url" placeholder="Reference link (https://…)"
                   class="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[#81938A]"/>
               </div>
+              <!-- Image picker row -->
+              <div class="space-y-1.5">
+                <!-- Existing files (images as thumbnails, others as rows) -->
+                <template v-if="todo.task_todo_files?.length">
+                  <div v-if="todo.task_todo_files.some(f => f.file_type?.startsWith('image/'))" class="flex flex-wrap gap-2">
+                    <div
+                      v-for="f in todo.task_todo_files.filter(f => f.file_type?.startsWith('image/'))"
+                      :key="f.id"
+                      class="relative group/thumb flex-shrink-0"
+                    >
+                      <a :href="f.file_url" target="_blank" rel="noopener" @click.stop>
+                        <img :src="f.file_url" :title="f.file_name"
+                          class="w-16 h-16 rounded object-cover border border-gray-200 hover:border-[#81938A] transition" />
+                      </a>
+                      <button
+                        type="button"
+                        class="absolute top-0.5 right-0.5 opacity-0 group-hover/thumb:opacity-100 transition bg-black/60 hover:bg-red-600 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] leading-none"
+                        title="Remove"
+                        @click.stop="todoStore.deleteFile(f.id, todo.id)"
+                      >&times;</button>
+                    </div>
+                  </div>
+                  <div
+                    v-for="f in todo.task_todo_files.filter(f => !f.file_type?.startsWith('image/'))"
+                    :key="f.id"
+                    class="flex items-center gap-1.5 group/file text-xs text-gray-600 bg-gray-50 rounded px-2 py-1"
+                  >
+                    <span class="flex-shrink-0">{{ fileIcon(f.file_type) }}</span>
+                    <a :href="f.file_url" target="_blank" rel="noopener" class="truncate max-w-[180px] text-blue-600 hover:underline" :title="f.file_name" @click.stop>{{ f.file_name }}</a>
+                    <span class="text-gray-400 flex-shrink-0">{{ f.file_type === 'folder_link' ? 'link' : fmtSize(f.file_size) }}</span>
+                    <button
+                      type="button"
+                      class="ml-auto opacity-0 group-hover/file:opacity-100 transition text-red-400 hover:text-red-600 flex-shrink-0"
+                      title="Remove"
+                      @click.stop="todoStore.deleteFile(f.id, todo.id)"
+                    >&times;</button>
+                  </div>
+                </template>
+                <div class="flex items-center gap-2">
+                  <button
+                    type="button"
+                    class="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-[#81938A] border border-dashed border-gray-300 hover:border-[#81938A] rounded px-2.5 py-1 transition"
+                    @click="triggerEditImagePicker"
+                  >
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+                    </svg>
+                    Add file
+                  </button>
+                  <span class="text-xs text-gray-400">or</span>
+                  <span class="inline-flex items-center gap-1 text-xs text-gray-400 select-none">
+                    <kbd class="font-sans text-[10px] bg-gray-100 border border-gray-200 rounded px-1 py-px leading-tight">Ctrl+V</kbd>
+                    paste
+                  </span>
+                </div>
+                <div v-if="editPendingImages.length" class="space-y-1.5">
+                  <!-- image thumbnails -->
+                  <div v-if="editPendingImages.some(f => f.file.type.startsWith('image/'))" class="flex flex-wrap gap-2">
+                    <div v-for="(f, i) in editPendingImages.filter(f => f.file.type.startsWith('image/'))" :key="i" class="relative group/thumb flex-shrink-0">
+                      <img :src="f.url" class="w-16 h-16 rounded object-cover border border-gray-200" />
+                      <button type="button"
+                        class="absolute top-0.5 right-0.5 bg-black/60 hover:bg-red-600 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] leading-none transition"
+                        title="Remove" @click="removeEditPendingImage(editPendingImages.indexOf(f))">&times;</button>
+                    </div>
+                  </div>
+                  <!-- non-image file rows -->
+                  <div v-for="(f, i) in editPendingImages.filter(f => !f.file.type.startsWith('image/'))"
+                    :key="'nimg-'+i" class="flex items-center gap-1.5 text-xs text-gray-600 bg-gray-50 rounded px-2 py-1">
+                    <span class="flex-shrink-0">{{ fileIcon(f.file.type) }}</span>
+                    <a :href="f.url" target="_blank" rel="noopener" class="truncate max-w-[180px] text-blue-600 hover:underline" :title="f.file.name" @click.stop>{{ f.file.name }}</a>
+                    <span class="text-gray-400 flex-shrink-0">{{ fmtSize(f.file.size) }}</span>
+                    <button type="button" class="ml-auto text-red-400 hover:text-red-600 flex-shrink-0"
+                      @click="removeEditPendingImage(editPendingImages.indexOf(f))">&times;</button>
+                  </div>
+                </div>
+              </div>
               <div class="flex justify-end gap-2">
                 <button type="button" class="px-3 py-1 text-xs text-gray-600 hover:bg-gray-100 rounded transition" @click="cancelEdit">Cancel</button>
                 <button type="button"
@@ -280,6 +377,47 @@
             </div>
             <textarea v-model="addForm.notes" rows="2" placeholder="Notes (optional)…"
               class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[#81938A] resize-none"/>
+            <!-- Image picker row -->
+            <div class="space-y-1.5">
+              <div class="flex items-center gap-2">
+                <button
+                  type="button"
+                  class="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-[#81938A] border border-dashed border-gray-300 hover:border-[#81938A] rounded px-2.5 py-1 transition"
+                  @click="triggerAddImagePicker"
+                >
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+                  </svg>
+                  Add file
+                </button>
+                <span class="text-xs text-gray-400">or</span>
+                <span class="inline-flex items-center gap-1 text-xs text-gray-400 select-none">
+                  <kbd class="font-sans text-[10px] bg-gray-100 border border-gray-200 rounded px-1 py-px leading-tight">Ctrl+V</kbd>
+                  paste
+                </span>
+              </div>
+              <!-- Pending file previews -->
+              <div v-if="addPendingImages.length" class="space-y-1.5">
+                <!-- image thumbnails -->
+                <div v-if="addPendingImages.some(f => f.file.type.startsWith('image/'))" class="flex flex-wrap gap-2">
+                  <div v-for="(f, i) in addPendingImages.filter(f => f.file.type.startsWith('image/'))" :key="i" class="relative group/thumb flex-shrink-0">
+                    <img :src="f.url" class="w-16 h-16 rounded object-cover border border-gray-200" />
+                    <button type="button"
+                      class="absolute top-0.5 right-0.5 bg-black/60 hover:bg-red-600 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] leading-none transition"
+                      title="Remove" @click="removeAddPendingImage(addPendingImages.indexOf(f))">&times;</button>
+                  </div>
+                </div>
+                <!-- non-image file rows -->
+                <div v-for="(f, i) in addPendingImages.filter(f => !f.file.type.startsWith('image/'))"
+                  :key="'nimg-'+i" class="flex items-center gap-1.5 text-xs text-gray-600 bg-gray-50 rounded px-2 py-1">
+                  <span class="flex-shrink-0">{{ fileIcon(f.file.type) }}</span>
+                  <a :href="f.url" target="_blank" rel="noopener" class="truncate max-w-[180px] text-blue-600 hover:underline" :title="f.file.name" @click.stop>{{ f.file.name }}</a>
+                  <span class="text-gray-400 flex-shrink-0">{{ fmtSize(f.file.size) }}</span>
+                  <button type="button" class="ml-auto text-red-400 hover:text-red-600 flex-shrink-0"
+                    @click="removeAddPendingImage(addPendingImages.indexOf(f))">&times;</button>
+                </div>
+              </div>
+            </div>
             <div class="relative">
               <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
@@ -293,13 +431,12 @@
                 class="px-3 py-1 text-xs bg-[#81938A] hover:bg-[#6b7c73] text-white rounded transition disabled:opacity-50"
                 :disabled="!addForm.title.trim() || todoStore.saving"
                 @click="submitAdd">
-                Add
+                {{ todoStore.saving ? 'Saving…' : 'Save' }}
               </button>
             </div>
           </div>
         </div>
       </div>
-
       <!-- ── Footer ──────────────────────────────────────────────────── -->
       <div class="px-5 py-3 border-t border-gray-100">
         <button
@@ -313,21 +450,19 @@
         </button>
       </div>
 
-      <!-- Hidden file input -->
-      <input
-        ref="fileInputRef"
-        type="file"
-        multiple
-        class="hidden"
-        @change="onFilesSelected"
-      />
+      <!-- Hidden file input for todo-item uploads -->
+      <input ref="fileInputRef" type="file" multiple class="hidden" @change="onFilesSelected" />
+      <!-- Hidden file input for add-form file picker -->
+      <input ref="addImageInputRef" type="file" multiple class="hidden" @change="onAddImagesSelected" />
+      <!-- Hidden file input for edit-form file picker -->
+      <input ref="editImageInputRef" type="file" multiple class="hidden" @change="onEditImagesSelected" />
 
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, computed, watch, nextTick, onUnmounted } from 'vue'
 import { useTaskTodoStore, type TaskTodoFile } from '@/stores/taskTodoStore'
 import { useAuthorityStore } from '@/stores/authorityStore'
 import { useAuthStore } from '@/stores/authStore'
@@ -365,6 +500,7 @@ const memberOptions = computed(() =>
 
 watch(() => props.modelValue, async (open) => {
   if (open) {
+    window.addEventListener('paste', onModalPaste)
     todoStore.todos = []
     if (props.itrId) {
       await Promise.all([
@@ -381,6 +517,9 @@ watch(() => props.modelValue, async (open) => {
     }
   }
   if (!open) {
+    window.removeEventListener('paste', onModalPaste)
+    addPendingImages.value.forEach(img => URL.revokeObjectURL(img.url))
+    addPendingImages.value = []
     showAddForm.value     = false
     editingId.value       = null
     linkingTodoId.value   = null
@@ -393,11 +532,19 @@ watch(() => props.modelValue, async (open) => {
 const showAddForm = ref(false)
 const addTitleRef = ref<HTMLInputElement | null>(null)
 const addForm = ref({ title: '', assigned_to: null as string | null, due_date: '', notes: '', link: '' })
+const addPendingImages = ref<{ file: File; url: string }[]>([])
+
+const removeAddPendingImage = (i: number) => {
+  URL.revokeObjectURL(addPendingImages.value[i].url)
+  addPendingImages.value.splice(i, 1)
+}
 
 const openAddForm = () => {
   editingId.value   = null
   showAddForm.value = true
   addForm.value     = { title: '', assigned_to: null, due_date: '', notes: '', link: '' }
+  addPendingImages.value.forEach(img => URL.revokeObjectURL(img.url))
+  addPendingImages.value = []
   nextTick(() => addTitleRef.value?.focus())
 }
 
@@ -407,7 +554,7 @@ const submitAdd = async () => {
   const memberIds = memberOptions.value.length > 0
     ? memberOptions.value.map(m => m.value)
     : (authStore.userId ? [authStore.userId] : [])
-  await todoStore.createTodoAndNotify(
+  const created = await todoStore.createTodoAndNotify(
     {
       task_id:     props.taskId  ?? null,
       itr_id:      props.itrId   ?? null,
@@ -424,17 +571,28 @@ const submitAdd = async () => {
     authStore.userId,
   )
   showAddForm.value = false
+  if (created && addPendingImages.value.length > 0) {
+    for (const img of addPendingImages.value) {
+      URL.revokeObjectURL(img.url)
+      await todoStore.uploadFile(created.id, props.projectId, img.file, authStore.userId)
+    }
+    addPendingImages.value = []
+  }
 }
 
 // ─── Edit form ────────────────────────────────────────────────────────────────
 
-const editingId = ref<string | null>(null)
-const editForm  = ref({ title: '', assigned_to: null as string | null, due_date: '', notes: '', link: '' })
+const editingId         = ref<string | null>(null)
+const editForm          = ref({ title: '', assigned_to: null as string | null, due_date: '', notes: '', link: '' })
+const editPendingImages = ref<{ file: File; url: string }[]>([])
 
 const startEdit = (todo: { id: string; title: string; assigned_to: string | null; due_date: string | null; notes: string | null; link: string | null }) => {
   showAddForm.value = false
-  editingId.value   = todo.id
-  editForm.value    = {
+  // clear any previous pending images
+  editPendingImages.value.forEach(img => URL.revokeObjectURL(img.url))
+  editPendingImages.value = []
+  editingId.value = todo.id
+  editForm.value  = {
     title:       todo.title,
     assigned_to: todo.assigned_to,
     due_date:    todo.due_date ?? '',
@@ -443,7 +601,11 @@ const startEdit = (todo: { id: string; title: string; assigned_to: string | null
   }
 }
 
-const cancelEdit = () => { editingId.value = null }
+const cancelEdit = () => {
+  editPendingImages.value.forEach(img => URL.revokeObjectURL(img.url))
+  editPendingImages.value = []
+  editingId.value = null
+}
 
 const saveEdit = async (id: string) => {
   if (!editForm.value.title.trim()) return
@@ -454,6 +616,13 @@ const saveEdit = async (id: string) => {
     notes:       editForm.value.notes.trim() || null,
     link:        editForm.value.link.trim()  || null,
   })
+  if (editPendingImages.value.length > 0) {
+    for (const img of editPendingImages.value) {
+      URL.revokeObjectURL(img.url)
+      await todoStore.uploadFile(id, props.projectId, img.file, authStore.userId)
+    }
+    editPendingImages.value = []
+  }
   editingId.value = null
 }
 
@@ -518,6 +687,66 @@ const fmtSize = (bytes: number | null) => {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`
 }
+
+// ── Image picker for add form ────────────────────────────────────────────────
+
+const addImageInputRef = ref<HTMLInputElement | null>(null)
+
+const triggerAddImagePicker = () => addImageInputRef.value?.click()
+
+const onAddImagesSelected = (e: Event) => {
+  const input = e.target as HTMLInputElement
+  const files = Array.from(input.files ?? [])
+  input.value = ''
+  for (const file of files) {
+    addPendingImages.value.push({ file, url: URL.createObjectURL(file) })
+  }
+}
+
+// ── Image picker for edit form ────────────────────────────────────────────────
+
+const editImageInputRef = ref<HTMLInputElement | null>(null)
+
+const triggerEditImagePicker = () => editImageInputRef.value?.click()
+
+const onEditImagesSelected = (e: Event) => {
+  const input = e.target as HTMLInputElement
+  const files = Array.from(input.files ?? [])
+  input.value = ''
+  for (const file of files) {
+    editPendingImages.value.push({ file, url: URL.createObjectURL(file) })
+  }
+}
+
+const removeEditPendingImage = (i: number) => {
+  URL.revokeObjectURL(editPendingImages.value[i].url)
+  editPendingImages.value.splice(i, 1)
+}
+
+// ── Paste image (add form or edit form) ───────────────────────────────────────
+
+const hoveredTodoId = ref<string | null>(null) // kept for mouseenter/leave on rows
+
+const onModalPaste = (e: Event) => {
+  if (!showAddForm.value && !editingId.value) return
+  const ce = e as ClipboardEvent
+  const imageItems = Array.from(ce.clipboardData?.items ?? []).filter(i => i.type.startsWith('image/'))
+  if (!imageItems.length) return
+  ce.preventDefault()
+  for (const item of imageItems) {
+    const blob = item.getAsFile()
+    if (!blob) continue
+    const ext  = item.type.split('/')[1]?.replace('jpeg', 'jpg') ?? 'png'
+    const file = new File([blob], `pasted-${Date.now()}.${ext}`, { type: item.type })
+    if (showAddForm.value) {
+      addPendingImages.value.push({ file, url: URL.createObjectURL(blob) })
+    } else {
+      editPendingImages.value.push({ file, url: URL.createObjectURL(blob) })
+    }
+  }
+}
+
+onUnmounted(() => window.removeEventListener('paste', onModalPaste))
 
 const doneCount  = computed(() => todoStore.todos.filter(t => t.is_done).length)
 const progressPct = computed(() =>
