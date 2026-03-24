@@ -50,6 +50,18 @@
             <span class="text-xs text-gray-400">{{ formatTime(entry.created_at) }}</span>
           </div>
           <p class="text-xs text-gray-600 mt-0.5 leading-relaxed">{{ entry.detail || actionLabel(entry.action) }}</p>
+          <!-- Field-level changes (from 'updated' action) -->
+          <div v-if="entry.meta?.changes?.length" class="mt-1.5 space-y-0.5">
+            <div v-for="change in entry.meta.changes" :key="change.field"
+              class="flex gap-1 items-start rounded bg-blue-50 border border-blue-100 px-2 py-1 text-[11px] leading-snug">
+              <span class="font-semibold text-blue-700 whitespace-nowrap">{{ change.label }}:</span>
+              <span class="text-gray-400 line-through truncate max-w-[90px]">{{ formatVal(change.old) }}</span>
+              <svg class="w-2.5 h-2.5 flex-shrink-0 text-blue-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/>
+              </svg>
+              <span class="text-gray-800 font-medium truncate max-w-[90px]">{{ formatVal(change.new) }}</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -120,6 +132,15 @@ function iconPath(action: ItrActivityAction): string {
     comment_added:  'M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z',
   }
   return map[action] ?? 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z'
+}
+
+function formatVal(v: unknown): string {
+  if (v === null || v === undefined || v === '') return '(empty)'
+  if (Array.isArray(v)) return v.length === 0 ? '(none)' : v.join(', ')
+  const s = String(v)
+  // Truncate ISO datetime to date portion for readability
+  if (/^\d{4}-\d{2}-\d{2}T/.test(s)) return s.slice(0, 10)
+  return s
 }
 
 function formatTime(iso: string): string {

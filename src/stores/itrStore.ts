@@ -325,16 +325,44 @@ export const useItrStore = defineStore('itr', () => {
 
             // Log
             const authStore = useAuthStore()
-            if (authStore.userId && !('status_id' in (payload as any) && Object.keys(payload as any).length === 1)) {
-                // Only log plain data edits here; status changes are logged by advanceStatus / rejectToDraft
-                const hasStatusOnly = 'status_id' in (payload as any)
-                if (!hasStatusOnly) {
-                    useItrActivityStore().log({
-                        itr_id: id, project_id: updated.project_id,
-                        user_id: authStore.userId, user_name: authStore.userDisplayName || authStore.user?.email || authStore.userId,
-                        action: 'updated', detail: 'ITR data updated',
-                    })
+            const hasStatusOnly = 'status_id' in (payload as any) && Object.keys(payload as any).filter(k => k !== 'area_ids').length === 1
+            if (authStore.userId && !hasStatusOnly) {
+                // Build field-level change log
+                const FIELD_LABELS: Record<string, string> = {
+                    title: 'Title', req_title: 'Request Title',
+                    itr_number: 'ITR No.', req_itr_number: 'Request ITR No.',
+                    notes: 'Notes', req_notes: 'Request Notes', qc_notes: 'QC Notes',
+                    review_notes: 'Review Notes',
+                    location: 'Location', req_location: 'Request Location',
+                    drawing_number: 'Drawing No.', req_drawing_number: 'Request Drawing No.',
+                    revision_number: 'Revision', req_revision_number: 'Request Revision',
+                    planned_inspection_date: 'Planned Date',
+                    req_planned_inspection_date: 'Request Planned Date',
+                    req_inspection_date: 'Req. Inspection Date',
+                    inspection_date: 'Inspection Date',
+                    itr_type_id: 'ITR Type', discipline_id: 'Discipline',
+                    itp_id: 'ITP', task_id: 'Task',
+                    area_ids: 'Areas', req_area_ids: 'Areas (Request)',
                 }
+                const snapshot = itrs.value.find(i => i.id === id)
+                const changes: { field: string; label: string; old: unknown; new: unknown }[] = []
+                for (const [key, label] of Object.entries(FIELD_LABELS)) {
+                    if (!(key in (payload as any))) continue
+                    const oldVal = snapshot ? (snapshot as any)[key] : undefined
+                    const newVal = (payload as any)[key]
+                    const toStr = (v: unknown) => Array.isArray(v) ? v.join(',') : String(v ?? '')
+                    if (toStr(oldVal) !== toStr(newVal)) {
+                        changes.push({ field: key, label, old: oldVal, new: newVal })
+                    }
+                }
+                const changedLabels = changes.map(c => c.label)
+                useItrActivityStore().log({
+                    itr_id: id, project_id: updated.project_id,
+                    user_id: authStore.userId, user_name: authStore.userDisplayName || authStore.user?.email || authStore.userId,
+                    action: 'updated',
+                    detail: changedLabels.length > 0 ? `Updated: ${changedLabels.join(', ')}` : 'ITR data updated',
+                    meta: changes.length > 0 ? { changes } : undefined,
+                })
             }
 
             return updated

@@ -2297,7 +2297,8 @@ watch(() => draftForm.task_id, (taskId) => {
 // Load dependent data when dialog opens
 watch(() => props.modelValue, async (open) => {
   if (!open) return
-  showComments.value = props.autoOpenComments ?? false
+  showComments.value     = props.autoOpenComments ?? false
+  showActivityLog.value  = false
   editMode.value = false // always open in view mode
   const pid = projectStore.activeProject?.id
   if (!pid) return
