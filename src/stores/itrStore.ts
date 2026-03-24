@@ -294,6 +294,8 @@ export const useItrStore = defineStore('itr', () => {
     const updateITR = async (id: string, payload: ItrUpdate): Promise<ITR | null> => {
         loading.value = true
         error.value = null
+        // Capture old values BEFORE any DB/store mutation so we can diff below
+        const preSnapshot = itrs.value.find(i => i.id === id) ?? null
         try {
             const { area_ids, itr_areas: _ia, ...dbPayload } = payload as any
             const { data, error: dbErr } = await supabase
@@ -344,7 +346,7 @@ export const useItrStore = defineStore('itr', () => {
                     itp_id: 'ITP', task_id: 'Task',
                     area_ids: 'Areas', req_area_ids: 'Areas (Request)',
                 }
-                const snapshot = itrs.value.find(i => i.id === id)
+                const snapshot = preSnapshot
                 const changes: { field: string; label: string; old: unknown; new: unknown }[] = []
                 for (const [key, label] of Object.entries(FIELD_LABELS)) {
                     if (!(key in (payload as any))) continue
