@@ -33,7 +33,7 @@
             </svg>
             Status codes are fixed after creation.
           </div>
-          <button @click="openCreate" class="px-4 py-2 bg-moss text-white rounded-lg hover:bg-moss/90 transition-colors inline-flex items-center gap-2">
+          <button v-if="canManageStatuses" @click="openCreate" class="px-4 py-2 bg-moss text-white rounded-lg hover:bg-moss/90 transition-colors inline-flex items-center gap-2">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
             </svg>
@@ -62,7 +62,8 @@
         <div class="flex items-center px-4 py-3 border-b border-gray-200 bg-gray-50">
           <span class="w-8 text-xs uppercase font-bold text-gray-500 text-center">#</span>
           <span class="w-52 text-xs uppercase font-bold text-gray-500 ml-2">Code</span>
-          <span class="flex-1 text-xs uppercase font-bold text-gray-500">Label</span>
+          <span class="w-40 text-xs uppercase font-bold text-gray-500">Label</span>
+          <span class="flex-1 text-xs uppercase font-bold text-gray-500">Description</span>
           <span class="w-20 text-xs uppercase font-bold text-gray-500 text-center">Colour</span>
           <span class="w-44 text-xs uppercase font-bold text-gray-500">Icon</span>
           <span class="w-16 text-xs uppercase font-bold text-gray-500 text-center">Active</span>
@@ -89,7 +90,10 @@
           </div>
 
           <!-- Title -->
-          <div class="flex-1 text-gray-800 font-medium">{{ s.title }}</div>
+          <div class="w-40 text-gray-800 font-medium truncate">{{ s.title }}</div>
+
+          <!-- Description -->
+          <div class="flex-1 text-xs text-gray-500 truncate">{{ s.description ?? '—' }}</div>
 
           <!-- Colour swatch -->
           <div class="w-20 flex justify-center items-center gap-1.5">
@@ -116,7 +120,7 @@
           </div>
 
           <!-- Edit action -->
-          <div class="w-20 flex justify-end gap-0 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div class="w-20 flex justify-end gap-0 opacity-0 group-hover:opacity-100 transition-opacity" v-if="canManageStatuses">
             <button @click="openEdit(s)" title="Edit" class="p-1 text-gray-500 hover:text-moss transition-colors">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -160,6 +164,11 @@
                 <input v-model="createForm.title" type="text" required placeholder="e.g. QC Hold"
                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-moss" />
               </div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+              <textarea v-model="createForm.description" rows="2" placeholder="Optional — brief explanation of when this status applies"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-moss resize-none text-sm" />
             </div>
             <div class="flex items-center gap-3">
               <div class="relative flex-1">
@@ -276,6 +285,17 @@
               />
             </div>
 
+            <!-- Description -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+              <textarea
+                v-model="form.description"
+                rows="2"
+                placeholder="Optional — brief explanation of when this status applies"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-moss focus:border-transparent resize-none text-sm"
+              />
+            </div>
+
             <!-- Colour + preview -->
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Colour (hex)</label>
@@ -387,10 +407,16 @@
 import { ref, computed, reactive, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useItrStatusStore, type ItrStatus } from '@/stores/itrStatusStore'
 import { useProjectStore } from '@/stores/projectStore'
+import { useAuthority } from '@/composables/useAuthority'
 import ProjectSelectorDialog from '@/components/ProjectSelectorDialog.vue'
 
-const itrStatusStore = useItrStatusStore()
-const projectStore   = useProjectStore()
+const itrStatusStore  = useItrStatusStore()
+const projectStore    = useProjectStore()
+const { isSystemAdmin, hasProjectPermission } = useAuthority()
+
+const canManageStatuses = computed(() =>
+  isSystemAdmin.value || hasProjectPermission('manage_itr_statuses')
+)
 
 const selectorOpen      = ref(false)
 const dialogOpen        = ref(false)
@@ -410,12 +436,12 @@ const isValidHex = (val: string) => /^#[0-9A-Fa-f]{6}$/.test(val)
 // ── Create Form ────────────────────────────────────────────────────────────────
 
 const createForm = reactive({
-  code: '', title: '', color: '', icon: '', sort_order: 1, is_active: true,
+  code: '', title: '', description: '', color: '', icon: '', sort_order: 1, is_active: true,
 })
 
 const openCreate = () => {
   Object.assign(createForm, {
-    code: '', title: '', color: '', icon: '',
+    code: '', title: '', description: '', color: '', icon: '',
     sort_order: itrStatusStore.statuses.length + 1,
     is_active: true,
   })
@@ -427,13 +453,14 @@ const createStatus = async () => {
   const project = projectStore.activeProject
   if (!project) return
   const created = await itrStatusStore.createStatus({
-    project_id: project.id,
-    code:       createForm.code.trim().toLowerCase().replace(/\s+/g, '_'),
-    title:      createForm.title.trim(),
-    color:      createForm.color.trim() || null,
-    icon:       createForm.icon.trim() || null,
-    sort_order: createForm.sort_order,
-    is_active:  createForm.is_active,
+    project_id:  project.id,
+    code:        createForm.code.trim().toLowerCase().replace(/\s+/g, '_'),
+    title:       createForm.title.trim(),
+    description: createForm.description.trim() || null,
+    color:       createForm.color.trim() || null,
+    icon:        createForm.icon.trim() || null,
+    sort_order:  createForm.sort_order,
+    is_active:   createForm.is_active,
   })
   if (created) { showSnack(`"${created.title}" added`); createDialogOpen.value = false }
   else showSnack(itrStatusStore.error ?? 'Create failed', 'error')
@@ -455,17 +482,18 @@ const doDelete = async () => {
 // ── Edit Form ──────────────────────────────────────────────────────────────────
 
 const form = reactive({
-  title: '', color: '', icon: '', sort_order: 1, is_active: true,
+  title: '', description: '', color: '', icon: '', sort_order: 1, is_active: true,
 })
 
 const openEdit = (s: ItrStatus) => {
   editTarget.value = s
   Object.assign(form, {
-    title:      s.title,
-    color:      s.color ?? '',
-    icon:       s.icon ?? '',
-    sort_order: s.sort_order,
-    is_active:  s.is_active,
+    title:       s.title,
+    description: s.description ?? '',
+    color:       s.color ?? '',
+    icon:        s.icon ?? '',
+    sort_order:  s.sort_order,
+    is_active:   s.is_active,
   })
   dialogOpen.value = true
 }
@@ -480,11 +508,12 @@ const saveStatus = async () => {
   if (!editTarget.value) return
 
   const updated = await itrStatusStore.updateStatus(editTarget.value.id, {
-    title:      form.title.trim(),
-    color:      form.color.trim() || null,
-    icon:       form.icon.trim() || null,
-    sort_order: form.sort_order,
-    is_active:  form.is_active,
+    title:       form.title.trim(),
+    description: form.description.trim() || null,
+    color:       form.color.trim() || null,
+    icon:        form.icon.trim() || null,
+    sort_order:  form.sort_order,
+    is_active:   form.is_active,
   })
 
   if (updated) {

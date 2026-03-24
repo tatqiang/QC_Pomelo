@@ -9,6 +9,7 @@ export interface ItrStatus {
     project_id: string
     code: string
     title: string
+    description: string | null
     sort_order: number
     color: string | null
     icon: string | null

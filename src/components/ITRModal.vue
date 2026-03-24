@@ -499,35 +499,6 @@
         <div v-else-if="activeTab === 'inspection_report'">
           <form class="space-y-3">
 
-            <!-- ── Current Status ─────────────────────────────────────────── -->
-            <div class="flex items-center gap-3 p-3 rounded-lg border border-gray-200 bg-gray-50">
-              <div class="flex-1">
-                <div class="text-[0.65rem] font-semibold tracking-widest uppercase text-gray-400 mb-1">Current Status</div>
-                <!-- View mode: colored badge -->
-                <div v-if="!isInspectionTabEditable" class="flex items-center gap-2">
-                  <span
-                    class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold"
-                    :style="liveItr ? `background:${itrStatusStore.getColor(liveItr.status_id)}20; color:${itrStatusStore.getColor(liveItr.status_id)}` : ''"
-                  >
-                    <span class="w-2 h-2 rounded-full inline-block"
-                      :style="liveItr ? `background:${itrStatusStore.getColor(liveItr.status_id)}` : ''"
-                    />
-                    {{ liveItr ? itrStatusStore.getLabel(liveItr.status_id) : '—' }}
-                  </span>
-                </div>
-                <!-- Edit mode: dropdown -->
-                <select
-                  v-else
-                  v-model="localStatusId"
-                  class="w-full rounded border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-[#81938A]"
-                >
-                  <option v-for="s in inspectionStatuses" :key="s.id" :value="s.id">
-                    {{ s.title }}
-                  </option>
-                </select>
-              </div>
-            </div>
-
             <!-- ── Basic Information (shared with REQUEST ITR) ────────────── -->
             <div class="text-[0.65rem] font-semibold tracking-widest uppercase text-gray-400 mb-1">Basic Information</div>
             <div>
@@ -1255,7 +1226,8 @@
       <div class="border-t border-gray-200" />
 
       <!-- ── Action buttons ──────────────────────────────────────────────── -->
-      <div class="flex items-center flex-wrap gap-2 px-6 py-4">
+      <div class="flex flex-col px-6 py-4 gap-2">
+        <div class="flex items-center flex-wrap gap-2">
         <button type="button" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 transition" @click="close">Close</button>
         <div class="flex-1" />
 
@@ -1340,17 +1312,27 @@
           </button>
         </template>
 
-        <!-- Tab 2 (INSPECTION & REPORT): Save button in edit mode -->
-        <button
-          v-if="activeTab === 'inspection_report' && isInspectionTabEditable"
-          type="button"
-          class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded bg-[#81938A] text-white hover:bg-[#6b7a72] transition disabled:opacity-50"
-          :disabled="itrStore.loading || uploading"
-          @click="saveInspectionReport"
-        >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
-          Save Inspection &amp; Report
-        </button>
+        <!-- Tab 2 (INSPECTION & REPORT): Status selector + Save in edit mode -->
+        <template v-if="activeTab === 'inspection_report' && isInspectionTabEditable">
+          <div class="flex flex-col gap-0.5">
+            <label class="text-[0.6rem] font-semibold tracking-widest uppercase text-gray-400 leading-none">Confirm Status</label>
+            <select
+              v-model="localStatusId"
+              class="rounded border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-[#81938A] min-w-[160px]"
+            >
+              <option v-for="s in inspectionStatuses" :key="s.id" :value="s.id">{{ s.title }}</option>
+            </select>
+          </div>
+          <button
+            type="button"
+            class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded bg-[#81938A] text-white hover:bg-[#6b7a72] transition disabled:opacity-50"
+            :disabled="itrStore.loading || uploading"
+            @click="saveInspectionReport"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+            Save Inspection &amp; Report
+          </button>
+        </template>
 
         <!-- Build HTML Report (opens picker) -->
         <button
@@ -1410,6 +1392,13 @@
             </div>
           </div>
         </template>
+        </div>
+        <!-- Description bar — shown below buttons when a status with description is selected -->
+        <p v-if="activeTab === 'inspection_report' && isInspectionTabEditable && itrStatusStore.getById(localStatusId ?? '')?.description"
+          class="text-sm text-red-600 font-medium text-center w-full"
+        >
+          {{ itrStatusStore.getById(localStatusId ?? '')?.description }}
+        </p>
       </div>
     </div>
 
@@ -2111,6 +2100,13 @@ const internalFormRef = ref()
 const externalFormRef = ref()
 const reportFormRef   = ref()
 const approvedFormRef = ref()
+
+// Auto-fill status dropdown with first inspection status when entering edit mode with no status set
+watch(isInspectionTabEditable, (editable) => {
+  if (editable && !localStatusId.value) {
+    localStatusId.value = inspectionStatuses.value[0]?.id ?? null
+  }
+})
 
 const draftForm = reactive({
   title: '', itr_number: '', itr_type_id: null as string | null,

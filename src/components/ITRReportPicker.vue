@@ -1250,7 +1250,14 @@ const attachmentsByCategory = computed<Record<string, ItrAttachment[]>>(() => {
   return map
 })
 
-const imageAttachments = computed(() => attachmentsByCategory.value['image'] ?? [])
+const imageAttachments = computed(() => {
+  // Include both 'image' category and image files stored under 'additional'
+  const fromImage = attachmentsByCategory.value['image'] ?? []
+  const fromAdditional = (attachmentsByCategory.value['additional'] ?? []).filter(a =>
+    /\.(jpe?g|png|gif|webp|bmp|svg)$/i.test(a.file_url ?? '')
+  )
+  return [...fromImage, ...fromAdditional]
+})
 
 const allPickerImages = computed(() => [
   ...imageAttachments.value,
