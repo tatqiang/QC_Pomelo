@@ -5,6 +5,8 @@ import { r2StorageService } from '@/services/r2StorageService'
 import { useItrStatusStore, type ItrStatusCode } from '@/stores/itrStatusStore'
 import { useNotificationStore } from '@/stores/notificationStore'
 import { useAuthorityStore } from '@/stores/authorityStore'
+import { useAuthStore } from '@/stores/authStore'
+import { useItrActivityStore } from '@/stores/itrActivityStore'
 import { type Material } from '@/stores/materialStore'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -268,6 +270,17 @@ export const useItrStore = defineStore('itr', () => {
             itr.itr_materials = []
             itr.qc_assignments = []
             itrs.value.unshift(itr)
+
+            // Log
+            const authStore = useAuthStore()
+            if (authStore.userId) {
+                useItrActivityStore().log({
+                    itr_id: itr.id, project_id: itr.project_id,
+                    user_id: authStore.userId, user_name: authStore.userDisplayName || authStore.user?.email || authStore.userId,
+                    action: 'created', detail: `ITR created: "${itr.title}"`,
+                })
+            }
+
             return itr
         } catch (err) {
             error.value = err instanceof Error ? err.message : 'Failed to create ITR'
@@ -309,6 +322,21 @@ export const useItrStore = defineStore('itr', () => {
                 updated.qc_assignments = itrs.value[idx].qc_assignments ?? []
                 itrs.value[idx] = updated
             }
+
+            // Log
+            const authStore = useAuthStore()
+            if (authStore.userId && !('status_id' in (payload as any) && Object.keys(payload as any).length === 1)) {
+                // Only log plain data edits here; status changes are logged by advanceStatus / rejectToDraft
+                const hasStatusOnly = 'status_id' in (payload as any)
+                if (!hasStatusOnly) {
+                    useItrActivityStore().log({
+                        itr_id: id, project_id: updated.project_id,
+                        user_id: authStore.userId, user_name: authStore.userDisplayName || authStore.user?.email || authStore.userId,
+                        action: 'updated', detail: 'ITR data updated',
+                    })
+                }
+            }
+
             return updated
         } catch (err) {
             error.value = err instanceof Error ? err.message : 'Failed to update ITR'
@@ -401,7 +429,16 @@ export const useItrStore = defineStore('itr', () => {
         }
 
         const updated = await updateITR(id, { ...stateUpdate, ...additionalPayload })
-        if (updated) notifyItrUpdate(updated, nextStatus.title, userId)
+        if (updated) {
+            notifyItrUpdate(updated, nextStatus.title, userId)
+            const authStore = useAuthStore()
+            useItrActivityStore().log({
+                itr_id: id, project_id: updated.project_id,
+                user_id: userId, user_name: authStore.userDisplayName || authStore.user?.email || userId,
+                action: 'status_changed', detail: `Status → ${nextStatus.title}`,
+                meta: { status_code: nextStatus.code, status_title: nextStatus.title },
+            })
+        }
         return updated
     }
 
@@ -428,7 +465,16 @@ export const useItrStore = defineStore('itr', () => {
             approved_by: null,
             approved_at: null,
         })
-        if (updated) notifyItrUpdate(updated, 'Plan', userId, true)
+        if (updated) {
+            notifyItrUpdate(updated, 'Plan', userId, true)
+            const authStore = useAuthStore()
+            useItrActivityStore().log({
+                itr_id: id, project_id: updated.project_id,
+                user_id: userId, user_name: authStore.userDisplayName || authStore.user?.email || userId,
+                action: 'status_changed', detail: 'Rejected → Plan',
+                meta: { status_code: 'plan', rejected: true, notes: notes ?? null },
+            })
+        }
         return updated
     }
 
@@ -500,6 +546,18 @@ export const useItrStore = defineStore('itr', () => {
             const idx = itrs.value.findIndex(i => i.id === itr.id)
             const local = idx !== -1 ? itrs.value[idx] : null
             if (local) local.itr_attachments.push(attachment)
+
+            // Log
+            const authStore = useAuthStore()
+            if (authStore.userId) {
+                useItrActivityStore().log({
+                    itr_id: itr.id, project_id: itr.project_id,
+                    user_id: authStore.userId, user_name: authStore.userDisplayName || authStore.user?.email || authStore.userId,
+                    action: 'file_added', detail: `File added: "${uploadFile.name}" (${category})`,
+                    meta: { file_name: uploadFile.name, file_size: uploadFile.size, category },
+                })
+            }
+
             return attachment
         } catch (err) {
             error.value = err instanceof Error ? err.message : 'Failed to upload attachment'
@@ -514,6 +572,10 @@ export const useItrStore = defineStore('itr', () => {
         loading.value = true
         error.value = null
         try {
+            // Grab file name before deleting
+            const itrLocal = itrs.value.find(i => i.id === itrId)
+            const attLocal = itrLocal?.itr_attachments.find(a => a.id === attachmentId)
+
             const { error: dbErr } = await supabase
                 .from('itr_attachments')
                 .delete()
@@ -527,6 +589,18 @@ export const useItrStore = defineStore('itr', () => {
             if (local) {
                 local.itr_attachments = local.itr_attachments.filter(a => a.id !== attachmentId)
             }
+
+            // Log
+            const authStore = useAuthStore()
+            if (authStore.userId && itrLocal) {
+                useItrActivityStore().log({
+                    itr_id: itrId, project_id: itrLocal.project_id,
+                    user_id: authStore.userId, user_name: authStore.userDisplayName || authStore.user?.email || authStore.userId,
+                    action: 'file_deleted', detail: `File deleted: "${attLocal?.file_name ?? attachmentId}"`,
+                    meta: { file_name: attLocal?.file_name, category: attLocal?.category },
+                })
+            }
+
             return true
         } catch (err) {
             error.value = err instanceof Error ? err.message : 'Failed to delete attachment'

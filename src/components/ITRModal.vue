@@ -32,7 +32,7 @@
             showComments ? 'bg-[#81938A]/15 text-[#81938A]' : 'text-gray-400 hover:text-[#81938A] hover:bg-gray-100'
           ]"
           title="Comments"
-          @click="showComments = !showComments; console.log('[ITRModal] showComments:', showComments, 'liveItr.id:', liveItr?.id)"
+          @click="showComments = !showComments; showActivityLog = false; console.log('[ITRModal] showComments:', showComments, 'liveItr.id:', liveItr?.id)"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -44,6 +44,22 @@
             class="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 rounded-full bg-[#81938A] text-white text-[9px] font-bold flex items-center justify-center px-0.5"
           >{{ itrCommentStore.comments.length }}</span>
         </button>
+        <!-- Activity log toggle button -->
+        <button
+          v-if="!isNew && liveItr"
+          type="button"
+          :class="[
+            'relative p-1.5 rounded-lg transition-colors mr-1',
+            showActivityLog ? 'bg-blue-100 text-blue-600' : 'text-gray-400 hover:text-blue-500 hover:bg-gray-100'
+          ]"
+          title="Activity Log"
+          @click="showActivityLog = !showActivityLog; showComments = false"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+        </button>
         <button type="button" class="text-gray-400 hover:text-gray-600 transition p-1" @click="close">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -52,7 +68,7 @@
       </div>
 
       <!-- ── Tabs (hidden in create mode) ─────────────────────────────── -->
-      <div v-if="!isNew && !showComments" class="flex border-b border-gray-200">
+      <div v-if="!isNew && !showComments && !showActivityLog" class="flex border-b border-gray-200">
         <button
           type="button"
           :class="['flex-1 py-3 text-sm font-semibold border-b-2 transition',
@@ -77,7 +93,12 @@
         <ITRComments :itrId="liveItr.id" @close="showComments = false" />
       </div>
 
-      <div v-if="!showComments" class="flex-1 overflow-y-auto px-6 py-5" style="min-height: 360px;">
+      <!-- Activity log panel (replaces form content when open) -->
+      <div v-if="showActivityLog && liveItr" class="flex-1 min-h-0 relative overflow-hidden">
+        <ITRActivityLog :itrId="liveItr.id" @close="showActivityLog = false" />
+      </div>
+
+      <div v-if="!showComments && !showActivityLog" class="flex-1 overflow-y-auto px-6 py-5" style="min-height: 360px;">
 
         <!-- ═══ PLAN / REQUEST ITR FORM ═════════════════════════════════ -->
         <div v-if="activeTab === 'request_itr' || isNew">
@@ -1854,6 +1875,7 @@ import DateTimePicker from '@/components/DateTimePicker.vue'
 import PDFFormViewer from '@/components/PDFFormViewer.vue'
 import ITRReportPicker from '@/components/ITRReportPicker.vue'
 import ITRComments from '@/components/ITRComments.vue'
+import ITRActivityLog from '@/components/ITRActivityLog.vue'
 
 // ── Datetime helpers (split/combine ISO local strings YYYY-MM-DDTHH:mm) ──────
 function dtDate(val: string) { return val ? (val.split('T')[0] ?? '') : '' }
@@ -1906,6 +1928,9 @@ const pickerDataMap    = ref<Record<string, string>>({})
 // ── Comments panel ───────────────────────────────────────────────────────────────
 const showComments     = ref(false)
 const itrCommentStore  = useItrCommentStore()
+
+// ── Activity log panel ───────────────────────────────────────────────────────────
+const showActivityLog  = ref(false)
 
 // ── Dialog open/close ─────────────────────────────────────────────────────────
 
