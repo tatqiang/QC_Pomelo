@@ -296,8 +296,8 @@
                   </button>
                 </div>
               </div>
-              <template v-if="isMatType">
-                <div class="text-[0.65rem] font-semibold tracking-widest uppercase text-gray-400 mb-1 mt-2">Material Approval Documents</div>
+              <template v-if="true">
+                <div class="text-[0.65rem] font-semibold tracking-widest uppercase text-gray-400 mb-1 mt-2">Linked Materials</div>
                 <div>
                   <div class="flex items-center justify-between mb-1">
                     <span class="text-xs font-medium text-gray-600">Linked Materials</span>
@@ -687,8 +687,8 @@
                 </button>
               </div>
             </div>
-            <template v-if="isMatType">
-              <div class="text-[0.65rem] font-semibold tracking-widest uppercase text-gray-400 mb-1 mt-2">Material Approval Documents</div>
+            <template v-if="true">
+              <div class="text-[0.65rem] font-semibold tracking-widest uppercase text-gray-400 mb-1 mt-2">Linked Materials</div>
               <div>
                 <div class="flex items-center justify-between mb-1">
                   <span class="text-xs font-medium text-gray-600">Linked Materials</span>
