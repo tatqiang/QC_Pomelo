@@ -37,51 +37,85 @@ export const useAuthStore = defineStore('auth', () => {
      * Find or auto-create user in POMELO Supabase from Azure profile
      */
     const findOrCreateUser = async (profile: UserProfile): Promise<User> => {
-        // 1. Try to find existing user by email
-        const { data, error: dbError } = await supabase
-            .from('users')
-            .select('*')
-            .eq('email', profile.email)
-            .limit(1)
+        // Race the Supabase query against a 8 s timeout so a slow/down DB never
+        // blocks auth and leaves the page blank.
+        const withTimeout = <T>(promise: Promise<T>, ms: number): Promise<T> =>
+            Promise.race([
+                promise,
+                new Promise<T>((_, reject) =>
+                    setTimeout(() => reject(new Error('Supabase timeout')), ms)
+                )
+            ])
 
-        const existingUser = data && data.length > 0 ? data[0] : null
-
-        if (!dbError && existingUser) {
-            console.log('✅ User found in database:', existingUser.email, 'Role:', existingUser.role)
-
-            // Update azure_user_id if not set
-            if (!existingUser.azure_user_id && profile.id) {
-                await supabase
+        try {
+            // 1. Try to find existing user by email
+            const { data, error: dbError } = await withTimeout(
+                supabase
                     .from('users')
-                    .update({
-                        azure_user_id: profile.id,
-                        updated_at: new Date().toISOString()
-                    })
-                    .eq('id', existingUser.id)
+                    .select('id, email, role, first_name, last_name, azure_user_id, user_type, status, company_id')
+                    .eq('email', profile.email)
+                    .limit(1),
+                8000
+            )
+
+            const existingUser = data && data.length > 0 ? data[0] : null
+
+            if (!dbError && existingUser) {
+                console.log('✅ User found in database:', existingUser.email, 'Role:', existingUser.role)
+
+                // Update azure_user_id if not set
+                if (!existingUser.azure_user_id && profile.id) {
+                    supabase
+                        .from('users')
+                        .update({
+                            azure_user_id: profile.id,
+                            updated_at: new Date().toISOString()
+                        })
+                        .eq('id', existingUser.id)
+                        .then()  // fire-and-forget, don't block auth
+                }
+
+                return existingUser
             }
 
-            return existingUser
-        }
+            // 2. User not found → auto-create
+            console.log('📝 User not found, auto-creating:', profile.email)
+            const { data: newUser, error: createError } = await withTimeout(
+                supabase
+                    .from('users')
+                    .insert({
+                        email: profile.email,
+                        first_name: profile.firstName,
+                        last_name: profile.lastName,
+                        azure_user_id: profile.id,
+                        user_type: 'internal',
+                        status: 'active',
+                        role: 'member'
+                    })
+                    .select()
+                    .single(),
+                8000
+            )
 
-        // 2. User not found → auto-create
-        console.log('📝 User not found, auto-creating:', profile.email)
-        const { data: newUser, error: createError } = await supabase
-            .from('users')
-            .insert({
-                email: profile.email,
-                first_name: profile.firstName,
-                last_name: profile.lastName,
-                azure_user_id: profile.id,
-                user_type: 'internal',
-                status: 'active',
-                role: 'member'
-            })
-            .select()
-            .single()
+            if (createError || !newUser) {
+                console.warn('⚠️ Could not auto-create user in Supabase:', createError?.message)
+                // Fallback: create local-only user from Azure profile
+                return {
+                    id: profile.id,
+                    email: profile.email,
+                    role: 'member',
+                    first_name: profile.firstName,
+                    last_name: profile.lastName,
+                    azure_user_id: profile.id
+                }
+            }
 
-        if (createError || !newUser) {
-            console.warn('⚠️ Could not auto-create user in Supabase:', createError?.message)
-            // Fallback: create local-only user from Azure profile
+            console.log('✅ New user created in database:', newUser.email)
+            return newUser
+
+        } catch (err) {
+            // Timeout or network error — fall back to local-only user so the app loads
+            console.warn('⚠️ findOrCreateUser failed (DB unavailable), using local profile:', (err as Error).message)
             return {
                 id: profile.id,
                 email: profile.email,
@@ -91,9 +125,6 @@ export const useAuthStore = defineStore('auth', () => {
                 azure_user_id: profile.id
             }
         }
-
-        console.log('✅ New user created in database:', newUser.email)
-        return newUser
     }
 
     const initialize = async (): Promise<void> => {

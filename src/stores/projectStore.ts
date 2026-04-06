@@ -34,7 +34,17 @@ export type ProjectUpdate = Partial<Omit<Project, 'id' | 'created_at' | 'updated
 
 // ─── Store ────────────────────────────────────────────────────────────────────
 
-const ACTIVE_PROJECT_KEY = 'pomelo_active_project_id'
+const ACTIVE_PROJECT_KEY  = 'pomelo_active_project_id'
+const PROJECTS_CACHE_KEY  = 'pomelo_projects_cache'
+const FETCH_TIMEOUT_MS    = 8000   // give up waiting for Supabase after 8 s
+
+/** Wrap a promise with a timeout; resolves with null on timeout instead of hanging. */
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | null> {
+    return Promise.race([
+        promise,
+        new Promise<null>(resolve => setTimeout(() => resolve(null), ms)),
+    ])
+}
 
 export const useProjectStore = defineStore('project', () => {
     const projects = ref<Project[]>([])
@@ -73,18 +83,33 @@ export const useProjectStore = defineStore('project', () => {
 
     // ── Actions ───────────────────────────────────────────────────────────────
 
-    /** Load all projects from Supabase, ordered newest first */
+    /** Load all projects from Supabase, ordered newest first.
+     *  Falls back to localStorage cache if Supabase is slow or unavailable. */
     const fetchProjects = async (): Promise<void> => {
         loading.value = true
         error.value = null
         try {
-            const { data, error: dbErr } = await supabase
-                .from('projects')
-                .select('*')
-                .order('created_at', { ascending: false })
+            const result = await withTimeout(
+                supabase.from('projects').select('*').order('created_at', { ascending: false }),
+                FETCH_TIMEOUT_MS
+            )
 
+            if (result === null) {
+                // Timed out — try localStorage cache
+                console.warn('⚠️ fetchProjects: Supabase timed out — loading from cache')
+                const cached = localStorage.getItem(PROJECTS_CACHE_KEY)
+                if (cached) projects.value = JSON.parse(cached) as Project[]
+                error.value = 'Could not reach server — showing cached data'
+                return
+            }
+
+            const { data, error: dbErr } = result
             if (dbErr) throw dbErr
+
             projects.value = (data as Project[]) ?? []
+
+            // Persist to cache for offline/timeout fallback
+            try { localStorage.setItem(PROJECTS_CACHE_KEY, JSON.stringify(projects.value)) } catch (_) {}
 
             // If persisted active project no longer exists, clear it
             if (activeProjectId.value && !projects.value.find(p => p.id === activeProjectId.value)) {
@@ -93,6 +118,11 @@ export const useProjectStore = defineStore('project', () => {
         } catch (err) {
             error.value = err instanceof Error ? err.message : 'Failed to load projects'
             console.error('❌ fetchProjects:', err)
+            // Try cache on error too
+            const cached = localStorage.getItem(PROJECTS_CACHE_KEY)
+            if (cached && projects.value.length === 0) {
+                projects.value = JSON.parse(cached) as Project[]
+            }
         } finally {
             loading.value = false
         }

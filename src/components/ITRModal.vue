@@ -1836,17 +1836,6 @@
     />
   </Teleport>
 
-  <!-- ── ITR Report Page Manager ─────────────────────────────────────────── -->
-  <Teleport to="body">
-    <ITRReportModal
-      v-if="showReportModal"
-      :pages="reportPages"
-      :itr-title="(liveItr?.item_no ?? liveItr?.itr_number ?? '') ? ((liveItr?.item_no ?? liveItr?.itr_number ?? '') + (liveItr?.title ? ' — ' + liveItr.title : '')) : (liveItr?.title ?? 'ITR Report')"
-      @close="showReportModal = false"
-      @back="showReportModal = false; showReportPicker = true"
-      @save="onReportSave"
-    />
-  </Teleport>
   </div>
 </template>
 
@@ -1922,7 +1911,6 @@ const itrSnapshots = ref<Record<string, ItrFormSnapshot>>({})
 
 // ── Report viewer state ─────────────────────────────────────────────────────
 const showReportPicker = ref(false)
-const showReportModal  = ref(false)
 const pickerDataMap    = ref<Record<string, string>>({})
 
 // ── Comments panel ───────────────────────────────────────────────────────────────
@@ -2376,9 +2364,15 @@ const checklistViewerOpen  = ref(false)
 const checklistViewerHtml  = ref<string>('')
 const checklistViewerLabel = ref<string>('')
 
-const openChecklistViewer = (id: string) => {
-  const c = checklistById(id)
+const openChecklistViewer = async (id: string) => {
+  let c = checklistById(id)
   if (!c) return
+  // Lazy-load html_content if this entry was fetched via the picker (metadata-only)
+  if (!c.html_content) {
+    await itpChecklistStore.fetchByIds([id])
+    c = checklistById(id)
+    if (!c) return
+  }
   checklistViewerLabel.value = `${c.code} — ${c.title}`
   checklistViewerHtml.value  = c.html_content ?? ''
   checklistViewerOpen.value  = true

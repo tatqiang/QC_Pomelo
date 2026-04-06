@@ -10,7 +10,7 @@ export interface ItpHtmlChecklist {
     code:         string
     title:        string
     discipline:   string | null
-    html_content: string
+    html_content: string | null   // null when loaded via picker (metadata-only); full when loaded via fetchByIds/fetchChecklists
     field_schema: string[] | null   // extracted data-key list (non-sys:, non-sig:)
     version:      string
     is_active:    boolean
@@ -136,19 +136,26 @@ export const useItpChecklistStore = defineStore('itpChecklist', () => {
         loading.value = true
         error.value   = null
         try {
+            // Select metadata only — html_content is NOT fetched here to reduce egress.
+            // html_content is lazy-loaded on demand when a checklist is opened for viewing.
             const { data, error: err } = await supabase
                 .from('itp_html_checklists')
-                .select('*')
+                .select('id, itp_id, code, title, discipline, version, is_active, field_schema, created_by, created_at, updated_at')
                 .in('itp_id', itpIds)
                 .eq('is_active', true)
                 .order('code')
             if (err) throw err
-            const fetched = data as ItpHtmlChecklist[] ?? []
+            const fetched = (data ?? []) as ItpHtmlChecklist[]
             const itpIdSet = new Set(itpIds)
-            // Replace entries for these ITPs with fresh data
+            // Build lookup of entries already in store that have html_content loaded
+            const existingWithContent = new Map(
+                checklists.value.filter(c => c.html_content).map(c => [c.id, c])
+            )
+            // Merge: preserve html_content for entries already loaded, add null for the rest
+            const merged = fetched.map(c => existingWithContent.get(c.id) ?? c)
             checklists.value = [
                 ...checklists.value.filter(c => !itpIdSet.has(c.itp_id)),
-                ...fetched,
+                ...merged,
             ]
         } catch (err) {
             error.value = err instanceof Error ? err.message : 'Failed to load checklists'

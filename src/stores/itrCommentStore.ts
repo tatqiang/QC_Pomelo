@@ -25,9 +25,11 @@ export const useItrCommentStore = defineStore('itrComments', () => {
 
   async function fetchCountsForItrs(itrIds: string[]): Promise<void> {
     if (!itrIds.length) return
+    // Select only the two columns we use — created_at is used server-side for
+    // ordering but not needed in the response payload.
     const { data, error } = await supabase
       .from('itr_comments')
-      .select('itr_id, body, created_at')
+      .select('itr_id, body')
       .in('itr_id', itrIds)
       .order('created_at', { ascending: false })
     if (error) { console.error('[itrComments] fetchCounts error:', error); return }

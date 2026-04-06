@@ -202,7 +202,7 @@ export const useItrStore = defineStore('itr', () => {
         try {
             const { data, error: dbErr } = await supabase
                 .from('itrs')
-                .select('*, itr_attachments(*), itr_areas(area_id, sort_order), itr_materials(id, itr_id, material_id, sort_order, created_at, material:materials(id, doc_no, title, material_files(*))), draft_user:users!draft_by(first_name, last_name, email), itr_qc_assignments(id, itr_id, user_id, created_at, user:users(id, first_name, last_name, email))')
+                .select('*, itr_attachments(*), itr_areas(area_id, sort_order), itr_materials(id, itr_id, material_id, sort_order, created_at, material:materials(id, doc_no, title)), draft_user:users!draft_by(first_name, last_name, email), itr_qc_assignments(id, itr_id, user_id, created_at, user:users(id, first_name, last_name, email))')
                 .eq('project_id', projectId)
                 .order('created_at', { ascending: false })
 

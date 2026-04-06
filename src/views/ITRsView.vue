@@ -506,6 +506,7 @@
       :task-name="todoTaskName"
       :project-id="todoProjectId"
       :itr-id="todoItrId"
+      :default-assign-to="todoDefaultAssignTo"
     />
 
     <!-- Delete confirm -->
@@ -654,18 +655,20 @@ const snackbar = reactive({ show: false, text: '', color: 'success' as string })
 const showSnack = (text: string, color = 'success') => Object.assign(snackbar, { show: true, text, color })
 
 // ── To-Do modal ───────────────────────────────────────────────────────────────
-const todoModalOpen    = ref(false)
-const todoTaskId       = ref<string | null>(null)
-const todoTaskName     = ref('')
-const todoProjectId    = ref<string | null>(null)
-const todoItrId        = ref<string | null>(null)
+const todoModalOpen       = ref(false)
+const todoTaskId          = ref<string | null>(null)
+const todoTaskName        = ref('')
+const todoProjectId       = ref<string | null>(null)
+const todoItrId           = ref<string | null>(null)
+const todoDefaultAssignTo = ref<string | null>(null)
 
 const openTodosForItr = (itr: ITR) => {
-  todoTaskId.value    = itr.task_id ?? null
-  todoTaskName.value  = itr.task_id ? (getTaskName(itr.task_id) ?? itr.title) : itr.title
-  todoProjectId.value = itr.project_id
-  todoItrId.value     = itr.id
-  todoModalOpen.value = true
+  todoTaskId.value          = itr.task_id ?? null
+  todoTaskName.value        = itr.task_id ? (getTaskName(itr.task_id) ?? itr.title) : itr.title
+  todoProjectId.value       = itr.project_id
+  todoItrId.value           = itr.id
+  todoDefaultAssignTo.value = itr.created_by ?? null
+  todoModalOpen.value       = true
 }
 
 // ── Stats filter ──────────────────────────────────────────────────────────────
@@ -1118,11 +1121,9 @@ const onSaved = (itr: ITR) => {
   onModalUpdated()
 }
 
-const onModalUpdated = () => {
-  if (projectStore.activeProject) {
-    itrStore.fetchITRs(projectStore.activeProject.id)
-  }
-}
+// updateITR / advanceStatus / addAttachment etc. all patch itrs[] in-place,
+// so no full refetch is needed when the modal reports a change.
+const onModalUpdated = () => {}
 
 const confirmDeleteITR = (itr: ITR) => { deleteTarget.value = itr; deleteDialogOpen.value = true }
 const doDelete = async () => {

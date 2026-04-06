@@ -9,6 +9,14 @@ export default defineConfig({
   server: {
     port: 5174,
     strictPort: true,   // fail fast if 5174 is taken instead of silently using 5175
+    proxy: {
+      // Forward /api calls to vercel dev during local development.
+      // In production everything runs on the same Vercel domain — no proxy needed.
+      '/api': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
+    },
   },
   plugins: [
     vue(),
@@ -78,17 +86,6 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
-    },
-  },
-  server: {
-    port: 5174,
-    proxy: {
-      // Forward /api calls to vercel dev during local development.
-      // In production everything runs on the same Vercel domain — no proxy needed.
-      '/api': {
-        target: 'http://localhost:3000',
-        changeOrigin: true,
-      },
     },
   },
   build: {

@@ -475,6 +475,7 @@ const props = defineProps<{
   taskName: string
   projectId: string | null
   itrId?: string | null
+  defaultAssignTo?: string | null
 }>()
 
 const emit = defineEmits<{ (e: 'update:modelValue', v: boolean): void }>()
@@ -542,7 +543,7 @@ const removeAddPendingImage = (i: number) => {
 const openAddForm = () => {
   editingId.value   = null
   showAddForm.value = true
-  addForm.value     = { title: '', assigned_to: null, due_date: '', notes: '', link: '' }
+  addForm.value     = { title: '', assigned_to: props.defaultAssignTo ?? null, due_date: '', notes: '', link: '' }
   addPendingImages.value.forEach(img => URL.revokeObjectURL(img.url))
   addPendingImages.value = []
   nextTick(() => addTitleRef.value?.focus())

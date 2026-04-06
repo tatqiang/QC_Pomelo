@@ -1052,6 +1052,8 @@ import { useItpChecklistStore } from '@/stores/itpChecklistStore'
 import { useItrReportPagesStore, type SavedPickerItem, type ReportPageConfig } from '@/stores/itrReportPagesStore'
 import { getPageCount, renderPageToDataUrl, renderPageToHtml } from '@/utils/pdfRenderer'
 import { useItrStore, type ITR, type ItrAttachment } from '@/stores/itrStore'
+import { useMaterialStore } from '@/stores/materialStore'
+import { r2StorageService } from '@/services/r2StorageService'
 
 // ─── Lazy thumbnail IntersectionObserver directive ────────────────────────────
 // Serial render queue: processes one pdf.js render at a time to prevent
@@ -1192,12 +1194,17 @@ function startResize(which: 'left' | 'mid', e: MouseEvent) {
 let _autoSaveTimer: ReturnType<typeof setTimeout> | null = null
 function scheduleAutoSave() {
   if (_autoSaveTimer !== null) clearTimeout(_autoSaveTimer)
+  // Delay of 2 s lets PDF thumbnail rendering complete before the save fires
   _autoSaveTimer = setTimeout(async () => {
     _autoSaveTimer = null
-    if (selection.value.length > 0) {
-      await reportPagesStore.saveConfig(props.itr.id, buildConfig())
+    if (selection.value.length === 0) return
+    const ok = await reportPagesStore.saveConfig(props.itr.id, buildConfig())
+    if (!ok) {
+      savedToast.value = '✗ Auto-save failed — config kept locally'
+      if (_savedToastTimer) clearTimeout(_savedToastTimer)
+      _savedToastTimer = setTimeout(() => { savedToast.value = null }, 6000)
     }
-  }, 800)
+  }, 2000)
 }
 watch(selection,     scheduleAutoSave, { deep: true })
 watch(photoSlotsMap, scheduleAutoSave, { deep: true })
@@ -1228,11 +1235,17 @@ const itpFiles = computed(() =>
   itpStore.itps.find(p => p.id === props.itr.itp_id)?.itp_files ?? []
 )
 
+const materialStore = useMaterialStore()
 const linkedMaterials = computed(() =>
   (props.itr.itr_materials ?? [])
     .slice()
     .sort((a, b) => a.sort_order - b.sort_order)
-    .map(im => im.material)
+    .map(im => {
+      if (!im.material) return null
+      // material_files is no longer joined in fetchITRs — resolve from materialStore
+      const full = materialStore.materials.find(m => m.id === im.material!.id)
+      return full ?? im.material
+    })
     .filter((m): m is NonNullable<typeof m> => !!m)
 )
 
@@ -1291,6 +1304,9 @@ async function handleDeviceFiles(e: Event) {
   input.value = ''
   if (!files.length) return
   const newImgs: Array<{id: string, file_name: string, file_url: string}> = []
+  const subPath = `itrs/${props.itr.project_id}/${props.itr.id}/photo_report`
+  savedToast.value = '⏳ Uploading photos…'
+  if (_savedToastTimer) clearTimeout(_savedToastTimer)
   await Promise.all(files.map(async file => {
     const reader = new FileReader()
     const dataUrl = await new Promise<string>(res => {
@@ -1298,12 +1314,32 @@ async function handleDeviceFiles(e: Event) {
       reader.readAsDataURL(file)
     })
     const compressed = await compressImageDataUrl(dataUrl, 1400, 1200, 0.82)
+    let fileUrl = compressed
+    try {
+      // Convert compressed data URL to a File and upload to R2 for a permanent HTTPS URL.
+      // This prevents base64 data from being stripped on Supabase save and avoids
+      // localStorage quota exhaustion.
+      const fetchRes = await fetch(compressed)
+      const blob = await fetchRes.blob()
+      const uploadFile = new File(
+        [blob],
+        file.name.replace(/\.[^.]+$/, '') + '.jpg',
+        { type: 'image/jpeg' }
+      )
+      fileUrl = await r2StorageService.uploadFile(uploadFile, subPath)
+    } catch (err) {
+      console.warn('[handleDeviceFiles] R2 upload failed, falling back to local data URL:', err)
+      savedToast.value = '⚠ Photo upload failed — stored locally only'
+      _savedToastTimer = setTimeout(() => { savedToast.value = null }, 6000)
+    }
     newImgs.push({
       id: `dev-${Date.now()}-${Math.random().toString(36).slice(2)}`,
       file_name: file.name,
-      file_url: compressed,
+      file_url: fileUrl,
     })
   }))
+  // Clear the uploading toast only if no error toast was set
+  if (savedToast.value === '⏳ Uploading photos…') savedToast.value = null
   localDeviceImages.value.push(...newImgs)
   // auto-assign when only one file uploaded and a picker is open
   if (newImgs.length === 1 && slotPickerIdx.value !== null) {
@@ -1887,11 +1923,19 @@ function processHtmlForm(htmlContent: string, overrides: Record<string, string> 
   // Using a shared variable means rebuildPageHtmlSeed() (in ITRModal) only needs to
   // replace one JSON literal and BOTH localStorage and __INJECT_DATA__ stay in sync.
   // Runs synchronously before DOMContentLoaded — loadData() reads the seeded values automatically.
+  //
+  // Strip sig-box keys from the localStorage seed: sig boxes are already baked as
+  // static HTML above (rawSigBoxes loop). Including them in localStorage would cause
+  // the form's DOMContentLoaded IIFE to recreate them — producing double signatures.
+  const lsSeedData: Record<string, unknown> = {}
+  for (const k of Object.keys(seedData)) {
+    if (k !== 'sig-boxes' && !k.startsWith('free-sig-')) lsSeedData[k] = seedData[k]
+  }
   const headScript = doc.createElement('script')
   headScript.textContent = `;(function(){
   window.__FORM_CODE__ = ${JSON.stringify(effectiveFormCode)};
   try {
-    var _d = JSON.stringify(${JSON.stringify(seedData)});
+    var _d = JSON.stringify(${JSON.stringify(lsSeedData)});
     window.__INJECT_DATA__ = JSON.parse(_d);${effectiveStoreKey ? `
     localStorage.setItem(${JSON.stringify(effectiveStoreKey)}, _d);` : ''}
   } catch(e) {}
@@ -2317,6 +2361,10 @@ async function printAllPages(ids?: Set<string>) {
 
         // Inject a body-normalizer style so the form renders cleanly inside the
         // fixed-size srcdoc iframe (no gray background strips, no extra margin).
+        // Also ensure .a4-container has min-height matching the page so sig-box
+        // coordinates (absolute-positioned from the container top) stay consistent
+        // between the sig-placement context and the Print-All context.
+        const pageMinH = p.isLandscape ? '210mm' : '297mm'
         const normalized = p.formHtml.replace(
           '</head>',
           `<style>
@@ -2326,10 +2374,12 @@ html, body {
   padding: 0 !important;
   margin: 0 !important;
   min-width: 0 !important;
+  align-items: flex-start !important;
 }
 .a4-container {
   box-shadow: none !important;
   margin: 0 auto !important;
+  min-height: ${pageMinH} !important;
 }
 @media print {
   html, body {
@@ -2337,7 +2387,7 @@ html, body {
     padding: 0 !important;
     margin: 0 !important;
   }
-  .a4-container { ${printContainerCSS} }
+  .a4-container { ${printContainerCSS} min-height: ${pageMinH} !important; }
 }
 </style></head>`
         )
@@ -2353,7 +2403,8 @@ html, body {
       return `<div class="page-wrapper ${orientClass}" id="pw-${i}"><div class="img-page"><img src="${src}" alt="${altText}"/></div></div>`
     }).join('\n')
 
-    const safeTitle = (props.itr as any).title?.replace(/[<>"&]/g, '') ?? 'Report'
+    const itrAny = props.itr as any
+    const safeTitle = (itrAny.itr_number || itrAny.item_no || itrAny.title || 'Report').replace(/[<>"&]/g, '')
 
     const combinedHtml = `<!DOCTYPE html>
 <html lang="en">
@@ -2547,6 +2598,8 @@ onMounted(async () => {
   const saved = await reportPagesStore.loadConfig(props.itr.id)
   if (saved) {
     restoreConfig(saved)
+    // If config came from localStorage (Supabase was down), try to sync it up now
+    reportPagesStore.syncLocalToSupabase(props.itr.id)
     return
   }
 
